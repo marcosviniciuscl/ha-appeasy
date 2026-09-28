@@ -30,7 +30,10 @@ A linha **não é obrigatória**: dá para escolher **várias linhas** e, deixan
 vazio, o app usa as **linhas monitoradas que passam pelo destino** (padrão) ou
 descobre as **linhas da cidade** que atendem o destino (veja **Ajustes →
 Comportamento → Trajeto sem linha escolhida**). O ponto de destino sai da lista
-pesquisável ou pode ser marcado **direto no mapa** (botão *Escolher no mapa*).
+pesquisável ou é escolhido **direto no mapa** (botão *Escolher no mapa*): toque
+no mapa para carregar as paradas num **raio configurável** (Ajustes → *Raio de
+busca do destino no mapa*, padrão 3 km) e toque na parada desejada — só é aceito
+um ponto que existe de verdade.
 
 Com isso o App calcula e mostra:
 

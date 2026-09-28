@@ -34,19 +34,13 @@
   header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;gap:10px;
          padding:calc(8px + env(safe-area-inset-top)) 16px 8px;background:var(--hdr-bg);
          backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
-         border-bottom:1px solid var(--linha)}
-  .brand{display:flex;align-items:center;gap:10px;min-width:0}
-  .brand .logo{width:32px;height:32px;border-radius:10px;background:var(--acento);color:#20160a;
-               display:grid;place-items:center;flex:0 0 auto;box-shadow:0 3px 10px rgba(245,165,36,.35)}
-  .brand .logo svg{width:20px;height:20px}
-  .brand h1{font-size:15.5px;margin:0;font-weight:650;letter-spacing:-.2px}
-  .brand .sub{font-size:11.5px;color:var(--txt2);max-width:48vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+         border-bottom:1px solid var(--linha);pointer-events:none}
   .status{margin-left:auto;display:flex;align-items:center;gap:8px}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:middle}
   .dot.off{background:var(--erro)}
   /* no mapa o topo vira um degradê: o mapa ocupa a tela toda, sem barra sólida */
-  body[data-tab="mapa"] header{background:linear-gradient(to bottom,var(--hdr-bg),var(--hdr-fade));
-    border-bottom-color:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding-bottom:16px}
+  body[data-tab="mapa"] header{background:transparent;border-bottom-color:transparent;
+    backdrop-filter:none;-webkit-backdrop-filter:none;padding-bottom:8px}
 
   /* ---------- mapa em tela cheia ---------- */
   #s-mapa{display:none}
@@ -235,9 +229,6 @@
   .prox-parada .p-ic svg{width:15px;height:15px;fill:var(--azul)}
 
   @media (max-width: 899px){
-    .brand h1{font-size:14.5px}
-    .brand .sub{max-width:42vw}
-    .status #hdr-ha{display:none}
     .status .pill{padding:4px 9px;font-size:11px}
   }
 
@@ -296,15 +287,8 @@
 <datalist id="dl-entidades"></datalist>
 
 <header>
-  <div class="brand">
-    <span class="logo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg></span>
-    <div style="min-width:0">
-      <h1>Bus Tracker</h1>
-      <div class="sub" id="hdr-sub">carregando…</div>
-    </div>
-  </div>
   <div class="status">
-    <span class="pill glass"><span class="dot off" id="dot"></span><span id="hdr-ha">HA</span></span>
+    <span class="pill glass"><span class="dot off" id="dot"></span><span id="hdr-ha">offline</span></span>
     <span class="pill glass" id="hdr-ciclo">—</span>
   </div>
 </header>
@@ -448,6 +432,8 @@
         <option value="monitoradas">Usar as linhas monitoradas no app</option>
         <option value="cidade">Descobrir linhas da cidade que atendem o destino</option>
       </select>
+      <label class="f">Raio de busca do destino no mapa (m)</label>
+      <input type="number" id="aj-raio-destino" step="500">
       <label class="f">Avisar quando faltar (m)</label>
       <input type="number" id="aj-limiar" step="100">
       <label class="f">Intervalo mínimo entre avisos (min)</label>
@@ -535,7 +521,10 @@ function trocarAba(t){
   document.querySelectorAll("main section").forEach(x=>x.classList.toggle("on", x.id==="s-"+t));
   const secMapa = document.getElementById("s-mapa");
   if (t==="mapa"){ secMapa.classList.add("on"); setTimeout(()=>mapa && mapa.invalidateSize(), 80); }
-  else secMapa.classList.remove("on");   // no desktop o CSS mantém o mapa visível
+  else {
+    secMapa.classList.remove("on");   // no desktop o CSS mantém o mapa visível
+    if (marcandoDestino){ marcandoDestino = false; if (destinoPickLayer) destinoPickLayer.clearLayers(); }
+  }
   if (t==="onibus") carregarOnibus();
 }
 document.querySelectorAll(".tab-btn").forEach(b=>{ b.onclick = ()=>trocarAba(b.dataset.t); });
@@ -558,14 +547,11 @@ const fmtHora = ts => ts ? new Date(ts*1000).toLocaleTimeString("pt-BR",{hour:"2
 /* ------------------------------------------------ estado geral */
 async function carregarEstado(){
   est = await api("/api/estado");
-  const nomeCidade = (est.cidade && est.cidade.nome) ? est.cidade.nome + " · " : "";
-  document.getElementById("hdr-sub").textContent =
-    nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
   renderMapaChips(); renderPessoas(); renderAjustes(); preencherSelects();
   renderCidade(); renderTrajetos(); renderCasa();
   const st = est.status||{};
   document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
-  document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
+  document.getElementById("hdr-ha").textContent = st.escutador ? "online" : "offline";
   document.getElementById("hdr-ciclo").textContent = st.ultimo_ciclo ? fmtHora(st.ultimo_ciclo) : "—";
   document.getElementById("tag-obs").textContent = (st.onibus||0)+" no mapa";
   document.getElementById("tag-rastreios").textContent = (st.rastreios||0)+" ativo(s)";
@@ -759,12 +745,13 @@ async function salvarTrajeto(){
   const dest = destinosLinha.find(p=>p.nome===destNome);
   let destino = {};
   if (dest){
-    destino = {cod: dest.cod||"", nome: destNome, lat: dest.lat, lon: dest.lon};
-  } else if (destinoEscolhido && destinoEscolhido.nome === destNome){
+    destino = {cod: dest.cod!=null?String(dest.cod):"", nome: destNome, lat: dest.lat, lon: dest.lon};
+  } else if (destinoEscolhido && destinoEscolhido.nome === destNome && destinoEscolhido.lat != null){
     destino = {cod: destinoEscolhido.cod||"", nome: destNome,
                lat: destinoEscolhido.lat, lon: destinoEscolhido.lon};
   } else if (destNome){
-    destino = {cod:"", nome: destNome};
+    // só aceita pontos que existem: da lista da linha ou escolhidos no mapa
+    return msg("tr-msg", "Escolha um ponto válido (da lista ou tocando num ponto no mapa).", false);
   }
   const trajeto = {
     id: editandoTrajeto,
@@ -827,54 +814,62 @@ function zoomIn(){ if (mapa) mapa.zoomIn(1); }
 function zoomOut(){ if (mapa) mapa.zoomOut(1); }
 
 /* ------------------------------------------------ escolher destino no mapa */
+function raioDestino(){
+  const r = +(est.ajustes && est.ajustes.raio_destino_m);
+  return r > 0 ? r : 3000;
+}
 function marcarDestino(){
   marcandoDestino = true;
-  destinosPick = destinosLinha.slice();
+  destinoEscolhido = null;
+  // se já existem linhas escolhidas, mostra as paradas delas para tocar
+  destinosPick = destinosLinha.filter(p=>p.lat != null);
   trocarAba("mapa");
-  if (!destinosPick.length && mapa){
-    const c = mapa.getCenter();
-    api("/api/paradas_proximas?lat="+c.lat+"&lon="+c.lng).then(r=>{
-      if (r && r.ok && marcandoDestino && !destinosPick.length){
-        destinosPick = r.paradas||[];
-        desenharDestinosPick();
-      }
-    }).catch(()=>{});
-  }
   desenharDestinosPick();
-  msg("tr-msg", destinosPick.length ? "Toque num ponto no mapa para escolher o destino." :
-      "Toque no mapa para marcar o destino (ponto mais próximo).");
+  msg("tr-msg", "Toque no mapa para carregar os pontos num raio de " + raioDestino() +
+      " m e depois toque no ponto de destino.");
 }
 function desenharDestinosPick(){
   if (!destinoPickLayer) return;
   destinoPickLayer.clearLayers();
   destinosPick.forEach(p=>{
     if (p.lat == null) return;
-    destinoPickLayer.addLayer(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:3,
-      fillColor:"#f5a524", fillOpacity:.7, className:"pontoPick", interactive:false}));
+    const mk = L.circleMarker([p.lat,p.lon], {radius:9, color:"#f5a524", weight:3,
+      fillColor:"#f5a524", fillOpacity:.75, bubblingMouseEvents:false});
+    mk.on("click", ()=>escolherDestinoPonto(p));
+    mk.bindTooltip(p.nome + (p._d != null ? " · " + fmtDist(p._d) : ""),
+                   {direction:"top", offset:[0,-6]});
+    destinoPickLayer.addLayer(mk);
   });
 }
-function escolherDestino(latlng){
-  let melhor = null, melhorD = Infinity;
-  destinosPick.forEach(p=>{
-    if (p.lat == null) return;
-    const d = latlng.distanceTo(L.latLng(p.lat, p.lon));
-    if (d < melhorD){ melhorD = d; melhor = p; }
-  });
-  if (melhor && melhorD <= 500){
-    destinoEscolhido = {cod: melhor.cod||"", nome: melhor.nome, lat: melhor.lat, lon: melhor.lon};
-  } else {
-    const lat = +latlng.lat.toFixed(6), lon = +latlng.lng.toFixed(6);
-    destinoEscolhido = {cod:"", nome:"Ponto "+lat.toFixed(4)+", "+lon.toFixed(4), lat, lon};
+function escolherDestinoPonto(p){
+  if (p.lat == null || !p.nome) return;
+  destinoEscolhido = {cod: p.cod != null ? String(p.cod) : "",
+                      nome: p.nome, lat: p.lat, lon: p.lon};
+  document.getElementById("tr-destino").value = p.nome;
+  marcandoDestino = false;
+  if (destinoPickLayer) destinoPickLayer.clearLayers();
+  trocarAba("trajetos");
+  msg("tr-msg", "Destino: " + p.nome + " — agora salve o trajeto.");
+}
+async function carregarPontosProximos(latlng){
+  const raio = raioDestino();
+  msg("tr-msg", "Buscando pontos num raio de " + raio + " m…");
+  try {
+    const r = await api("/api/paradas_proximas?lat="+latlng.lat+"&lon="+latlng.lng+"&raio="+raio);
+    if (!r || !r.ok || !marcandoDestino) return;
+    destinosPick = (r.paradas||[]).filter(p=>p.lat != null);
+    desenharDestinosPick();
+    msg("tr-msg", destinosPick.length
+      ? (destinosPick.length + " ponto(s) encontrados — toque no desejado.")
+      : "Nenhum ponto nesse raio. Tente tocar em outro lugar.", destinosPick.length > 0);
+  } catch(e){
+    msg("tr-msg", "Não deu para buscar os pontos agora.", false);
   }
-  document.getElementById("tr-destino").value = destinoEscolhido.nome;
 }
 function aoClicarMapa(e){
   if (marcandoDestino){
-    escolherDestino(e.latlng);
-    marcandoDestino = false;
-    if (destinoPickLayer) destinoPickLayer.clearLayers();
-    trocarAba("trajetos");
-    msg("tr-msg", "Destino escolhido: " + destinoEscolhido.nome);
+    // toque no mapa (fora de um ponto): carrega os pontos próximos
+    carregarPontosProximos(e.latlng);
     return;
   }
   if (marcandoCasa){
@@ -1232,10 +1227,12 @@ function renderAjustes(){
   document.getElementById("aj-margem").value = a.margem_embarque_min;
   document.getElementById("aj-janela").value = a.janela_saida_min;
   document.getElementById("aj-semlinha").value = a.trajetos_sem_linha || "monitoradas";
+  document.getElementById("aj-raio-destino").value = a.raio_destino_m || 3000;
 }
 async function salvarAjustes(){
   const r = await api("/api/ajustes", {
     trajetos_sem_linha: document.getElementById("aj-semlinha").value,
+    raio_destino_m: +document.getElementById("aj-raio-destino").value || 3000,
     limiar_aviso_m: +document.getElementById("aj-limiar").value,
     cooldown_min: +document.getElementById("aj-cooldown").value,
     velocidade_min_kmh: +document.getElementById("aj-vel").value,

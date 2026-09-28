@@ -191,9 +191,13 @@ def paradas_da_linha(cod_linha):
     return d.get("paradas", [])
 
 
-def paradas_proximas(lat, lon):
+def paradas_proximas(lat, lon, raio_m=1000):
     """Paradas próximas a um ponto, COM coordenadas (x=lon, y=lat)."""
-    d = _jsonp(_get(f"/buscarParadasProximas/{lon}/{lat}/1000/retornoJSON"), "retornoJSON")
+    try:
+        raio_m = max(100, int(raio_m))
+    except (TypeError, ValueError):
+        raio_m = 1000
+    d = _jsonp(_get(f"/buscarParadasProximas/{lon}/{lat}/{raio_m}/retornoJSON"), "retornoJSON")
     saida = []
     for p in d.get("paradas", []):
         try:

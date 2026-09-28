@@ -233,11 +233,15 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 return self._erro("informe lat/lon")
             try:
-                paradas = api.paradas_proximas(lat, lon)
+                raio = int((q.get("raio") or [self.motor.cfg["ajustes"].get("raio_destino_m", 3000)])[0])
+            except (TypeError, ValueError):
+                raio = 3000
+            try:
+                paradas = api.paradas_proximas(lat, lon, raio)
             except Exception as e:
                 log.debug(f"paradas próximas: {e}")
                 paradas = []
-            return self._json({"ok": True, "paradas": paradas})
+            return self._json({"ok": True, "raio": raio, "paradas": paradas})
         if caminho == "/api/log":
             return self._json({"log": list(motor.log)})
         if caminho == "/api/painel":

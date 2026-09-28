@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.34.0
+
+- **Destino só por ponto existente**: ao tocar no mapa, o app carrega as paradas
+  num **raio configurável** (Ajustes → *Raio de busca do destino no mapa*,
+  padrão 3 km) e você toca na parada desejada; não dá mais para salvar uma
+  coordenada solta — o destino é sempre um ponto real.
+- **Topo enxuto**: removido o cabeçalho com nome do app e linhas; ficaram só o
+  **horário** e o status **online/offline**.
+
 ## 0.33.0
 
 - **Trajetos sem linha obrigatória**: dá para escolher **várias linhas**
