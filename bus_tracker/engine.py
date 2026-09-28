@@ -665,23 +665,38 @@ class Motor:
             return "correr"
         return "ok"
 
-    def calcular_trajeto(self, t):
-        """Calcula ponto, caminhada, ônibus e risco de perder para um trajeto.
+    def _destino_trajeto(self, sigla, d):
+        """Resolve o ponto de destino do trajeto (por cod ou nome) com coordenadas."""
+        if not d or not (d.get("cod") or d.get("nome")):
+            return None
+        achou = None
+        try:
+            linha = api.linha_por_sigla(sigla)
+            if linha:
+                for p in api.paradas_com_coordenadas(linha["cod"]):
+                    if (d.get("cod") and str(p.get("cod")) == str(d.get("cod"))) or \
+                       (d.get("nome") and p.get("nome") == d.get("nome")):
+                        achou = p
+                        break
+        except Exception as e:
+            log.debug(f"destino {sigla}: {e}")
+        if not achou:
+            achou = {"nome": d.get("nome") or "", "lat": d.get("lat"), "lon": d.get("lon"),
+                     "cod": d.get("cod")}
+        return {"nome": achou.get("nome") or "", "lat": achou.get("lat"),
+                "lon": achou.get("lon"), "cod": achou.get("cod")}
 
-        `ida`: sai de casa -> ponto perto da casa (zona `casa`).
-        `volta`: pega perto de onde a pessoa está e desce perto da casa.
-        """
+    def calcular_trajeto(self, t):
+        """Calcula ponto de embarque, caminhada, ônibus e risco de perder."""
         pessoa = next((p for p in self.cfg.get("pessoas", []) if p["id"] == t.get("pessoa")), None)
         if not pessoa or not pessoa.get("ativo", True):
             return None
-        sentido = t.get("sentido") or "ida"
-        casa = self.posicao_casa()
         pos_pessoa = self.posicao(pessoa.get("entidade"))
-        ref = casa if (sentido == "ida" and casa) else None
+        ref = pos_pessoa or self.posicao_casa()
         ponto = self._ponto_trajeto(pessoa, t.get("linha"), ref_pos=ref)
         if not ponto:
             return None
-        origem = casa if (sentido == "ida" and casa) else (pos_pessoa or ponto["alvo"]["pos"])
+        origem = ref or ponto["alvo"]["pos"]
         margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
         onibus = []
         for b in self.candidatos(t.get("linha"), ponto["alvo"], 10 ** 7)[:3]:
@@ -702,20 +717,12 @@ class Motor:
                 bus_id = onibus[0]["id"]
         except Exception:
             pass
-        # volta: também calcula onde descer (ponto perto da casa) e a caminhada
-        destino_casa = None
-        if sentido == "volta" and casa:
-            dp = self._ponto_trajeto(pessoa, t.get("linha"), ref_pos=casa)
-            if dp:
-                destino_casa = {"nome": dp["nome"], "lat": dp["lat"], "lon": dp["lon"],
-                                "dist_m": dp["dist_m"], "tempo_min": dp["tempo_min"],
-                                "caminho": dp["caminho"]}
         return {
             "id": t.get("id"), "pessoa": pessoa["nome"], "pessoa_id": pessoa["id"],
-            "linha": self.sigla_exib(t.get("linha")), "sentido": sentido,
+            "linha": self.sigla_exib(t.get("linha")),
             "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
             "pos": {"lat": origem[0], "lon": origem[1]},
-            "casa": destino_casa,
+            "destino": self._destino_trajeto(t.get("linha"), t.get("destino") or {}),
             "agora": agora_bool, "bus_id": bus_id,
             "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
             "caminho": ponto["caminho"], "fonte": ponto["fonte"],

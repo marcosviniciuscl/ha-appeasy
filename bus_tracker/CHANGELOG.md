@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0
+
+- Trajetos agora usam **ponto de destino** (onde a pessoa vai descer) em vez de
+  ida/volta. O cálculo (embarque, tempo a pé, ônibus e risco) continua igual.
+- UI reformulada: **menu inferior flutuante e arredondado** (só ícones no
+  celular), **switches**, ícones nos títulos, foco nos campos e espaçamentos
+  melhores.
+- Campo de **destino pesquisável**, com as paradas da linha escolhida.
+
 ## 0.30.0
 
 - Removida a aba **Avisos** (os trajetos cobrem os avisos).

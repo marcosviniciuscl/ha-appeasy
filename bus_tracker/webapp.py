@@ -16,6 +16,7 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -204,6 +205,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(motor.estado_publico())
         if caminho.startswith("/api/onibus/"):
             return self._json(motor.detalhes_onibus(caminho.rsplit("/", 1)[-1]))
+        if caminho == "/api/paradas":
+            sigla = (parse_qs(urlparse(self.path).query).get("linha") or [""])[0].strip()
+            paradas = []
+            linha = api.linha_por_sigla(sigla) if sigla else None
+            if linha:
+                try:
+                    paradas = api.paradas_com_coordenadas(linha["cod"])
+                except Exception as e:
+                    log.debug(f"paradas {sigla}: {e}")
+            return self._json({"ok": True, "paradas": paradas})
         if caminho == "/api/log":
             return self._json({"log": list(motor.log)})
         if caminho == "/api/painel":
@@ -481,12 +492,16 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             if 0 <= d <= 6:
                 dias.append(d)
+        destino = t.get("destino") or {}
+        if not isinstance(destino, dict):
+            destino = {"nome": str(destino)}
         return {
             "id": str(t.get("id") or uuid.uuid4().hex[:8]),
             "ativo": bool(t.get("ativo", True)),
             "pessoa": str(t.get("pessoa") or "").strip(),
             "linha": str(t.get("linha") or "").strip(),
-            "sentido": "volta" if str(t.get("sentido") or "ida").strip() == "volta" else "ida",
+            "destino": {"cod": str(destino.get("cod") or "").strip(),
+                        "nome": str(destino.get("nome") or "").strip()},
             "dias": sorted(set(dias)) if dias else list(range(7)),
             "horarios": sorted(set(horarios)),
         }

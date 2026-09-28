@@ -22,16 +22,18 @@ qualquer outra cidade que use o mesmo sistema por configuração manual.
 
 ## Trajetos e caminhada
 
-Na aba **Trajetos** você cadastra **quais ônibus cada pessoa pega** e em **quais
-horários**, com sentido **ida** (saindo de casa) ou **volta** (para casa). É
-possível ter **vários trajetos** por pessoa e **vários horários** por trajeto.
+Na aba **Trajetos** você cadastra **quais ônibus cada pessoa pega**, em **quais
+horários** e o **ponto de destino** (onde vai descer). É possível ter **vários
+trajetos** por pessoa e **vários horários** por trajeto. O ponto de destino sai
+da própria linha escolhida (lista pesquisável).
 
 Com isso o App calcula e mostra:
 
 - o **ponto de embarque** (parada mais próxima da linha) e a **distância** até ele;
 - o **tempo a pé** calculado por **ruas** (OSRM) e a **linha da caminhada** no
-  mapa. Em **Ajustes → Casa** dá para cadastrar a casa por `zone.home` ou
-  marcando no mapa — é o que define **ida** (saindo de casa) e **volta**;
+  mapa, sempre até a **parada mais próxima** da linha. Em **Ajustes → Casa** dá
+  para cadastrar uma zona (por `zone.home` ou marcando no mapa), usada como
+  origem quando a pessoa não tem localização no HA;
 - o **ETA do ônibus** no ponto e o **tempo total** para conseguir pegá-lo;
 - o **risco** de perder o ônibus: *dá tempo*, *corra* ou *pode perder*.
 

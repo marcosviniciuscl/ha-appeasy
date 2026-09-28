@@ -11,7 +11,7 @@
     --bg:#0e1014; --card:#171a21; --card2:#1e222b; --linha:rgba(255,255,255,.09);
     --txt:#e9ecf2; --txt2:#98a2b3; --acento:#f5a524; --azul:#3d7dff; --ok:#37b169; --erro:#e5484d;
     --panel:rgba(20,23,29,.82); --hdr-bg:rgba(14,16,20,.78); --nav-bg:rgba(14,16,20,.94);
-    --hdr:48px; --nav:50px; --r:14px;
+    --hdr:48px; --nav:70px; --r:16px;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#eef1f5; --card:#fff; --card2:#f3f4f7; --linha:rgba(0,0,0,.08);
@@ -93,14 +93,16 @@
   .tab-btn.on{color:var(--acento)}
   .tab-btn .txt{display:block}
   .rail{display:none}
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:space-around;
-      padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);
-      backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
-      border-top:1px solid var(--linha)}
-  nav .tab-btn{flex:1;flex-direction:column;gap:2px;font:600 9.5px/1 inherit;padding:6px 2px}
-  nav .tab-btn .ic{width:22px;height:22px}
+  nav{position:fixed;z-index:45;left:10px;right:10px;
+      bottom:calc(env(safe-area-inset-bottom) + 8px);
+      display:flex;justify-content:space-around;gap:4px;padding:6px;border-radius:20px;
+      background:var(--nav-bg);backdrop-filter:blur(18px) saturate(140%);
+      -webkit-backdrop-filter:blur(18px) saturate(140%);
+      border:1px solid var(--linha);box-shadow:0 12px 32px rgba(0,0,0,.42)}
+  nav .tab-btn{flex:1;border-radius:15px;padding:9px 0;color:var(--txt2);transition:.18s}
+  nav .tab-btn .ic{width:23px;height:23px}
+  nav .tab-btn.on{background:var(--acento);color:#0e1014;box-shadow:0 5px 14px rgba(245,165,36,.35)}
   @media (max-width: 899px){ nav .tab-btn .txt{display:none} }
-  nav .tab-btn.on{color:var(--acento)}
 
   /* ---------- conteúdo ---------- */
   main{padding:calc(var(--hdr) + env(safe-area-inset-top) + 12px) 14px
@@ -162,6 +164,24 @@
   .personmark .l{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
                  font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
                  border:1px solid rgba(255,255,255,.28)}
+
+  /* ---------- componentes modernos ---------- */
+  input:focus,select:focus,textarea:focus{border-color:var(--acento);outline:none;
+    box-shadow:0 0 0 3px rgba(245,165,36,.16)}
+  .card{box-shadow:0 6px 22px rgba(0,0,0,.16)}
+  .card h2 .ci{width:18px;height:18px;color:var(--acento);flex:0 0 auto}
+  .hint{font-size:12px;color:var(--txt2);margin:-2px 0 8px;line-height:1.4}
+  .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--txt2);
+             font-weight:700;margin:14px 2px 6px}
+  .switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;font-weight:600}
+  .switch input{display:none}
+  .switch .tr{width:44px;height:26px;border-radius:999px;background:var(--card2);
+              border:1px solid var(--linha);position:relative;transition:.2s;flex:0 0 auto}
+  .switch .tr::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+                     background:var(--txt2);transition:.2s}
+  .switch input:checked + .tr{background:var(--acento);border-color:var(--acento)}
+  .switch input:checked + .tr::after{left:20px;background:#0e1014}
+  input[list]::-webkit-calendar-picker-indicator{opacity:.45}
 
   /* destaque do ônibus chegando + animação da caminhada */
   .busmark.destaque .b{animation:pisca 1.1s ease-in-out infinite}
@@ -225,6 +245,7 @@
   <symbol id="ic-home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></symbol>
 </svg>
 <datalist id="dl-linhas"></datalist>
+<datalist id="dl-destinos"></datalist>
 <datalist id="dl-pessoas"></datalist>
 <datalist id="dl-notify"></datalist>
 <datalist id="dl-entidades"></datalist>
@@ -285,7 +306,7 @@
   <!-- ============================ ÔNIBUS ============================ -->
   <section id="s-onibus">
     <div class="card">
-      <h2>Cidade</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Cidade</h2>
       <label class="f">Sistema SIUMobile</label>
       <select id="cid-sel"></select>
       <details id="cid-custom" style="margin-top:8px">
@@ -301,7 +322,7 @@
       <div class="aviso" id="cid-msg"></div>
     </div>
     <div class="card">
-      <h2>O que exibir no mapa<span class="tag" id="tag-obs"></span></h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-eye"/></svg>O que exibir no mapa<span class="tag" id="tag-obs"></span></h2>
       <label class="f">Linhas</label>
       <div class="chips" id="chips-linhas"></div>
       <label class="f">Pessoas</label>
@@ -309,7 +330,7 @@
       <div class="row"><button class="bt" onclick="salvarMapa()">Salvar exibição</button></div>
     </div>
     <div class="card">
-      <h2>Ônibus ao vivo<span class="tag" id="tag-qtd"></span></h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus ao vivo<span class="tag" id="tag-qtd"></span></h2>
       <div id="lista-onibus"></div>
     </div>
   </section>
@@ -317,25 +338,20 @@
   <!-- ============================ TRAJETOS ============================ -->
   <section id="s-trajetos">
     <div class="card">
-      <h2 id="tr-titulo">Novo trajeto</h2>
-      <p class="meta" style="margin:0 0 6px">Cadastre o ônibus que a pessoa pega e os horários. O app calcula o tempo a pé até o ponto e avisa quando sair.</p>
-      <div class="grid2">
-        <div><label class="f">Pessoa</label><input id="tr-pessoa" list="dl-pessoas" placeholder="digite o nome…"></div>
-        <div><label class="f">Sentido</label>
-          <select id="tr-sentido">
-            <option value="ida">Ida (saindo de casa)</option>
-            <option value="volta">Volta (para casa)</option>
-          </select>
-        </div>
-      </div>
-      <label class="f">Linha (digite para buscar)</label>
-      <input id="tr-linha" list="dl-linhas" placeholder="ex.: 085">
-      <label class="f">Horários do ônibus (separe por vírgula)</label>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-walk"/></svg><span id="tr-titulo">Novo trajeto</span></h2>
+      <p class="hint">Escolha a pessoa, o ônibus, onde vai <b>descer</b> e os horários. O app calcula o tempo a pé até o ponto de embarque e o risco de perder o ônibus.</p>
+      <label class="f">Pessoa</label>
+      <input id="tr-pessoa" list="dl-pessoas" placeholder="digite o nome…">
+      <label class="f">Linha (ônibus)</label>
+      <input id="tr-linha" list="dl-linhas" placeholder="digite para buscar…" oninput="carregarDestinos()">
+      <label class="f">Ponto de destino (onde vai descer)</label>
+      <input id="tr-destino" list="dl-destinos" placeholder="digite o ponto…">
+      <label class="f">Horários do ônibus</label>
       <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
       <label class="f">Dias da semana</label>
       <div class="chips" id="tr-dias"></div>
       <div class="row">
-        <label class="chip" id="tr-ativo-wrap"><input type="checkbox" id="tr-ativo" checked> Ativo</label>
+        <label class="switch"><input type="checkbox" id="tr-ativo" checked><span class="tr"></span> Ativo</label>
       </div>
       <div class="row">
         <button class="bt" onclick="salvarTrajeto()">Salvar trajeto</button>
@@ -345,7 +361,7 @@
       <div class="aviso" id="tr-msg"></div>
     </div>
     <div class="card">
-      <h2>Trajetos cadastrados</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-walk"/></svg>Trajetos cadastrados</h2>
       <div id="lista-trajetos-cad"></div>
     </div>
   </section>
@@ -353,7 +369,7 @@
   <!-- =========================== PESSOAS =========================== -->
   <section id="s-pessoas">
     <div class="card">
-      <h2 id="pe-titulo">Nova pessoa</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-account"/></svg><span id="pe-titulo">Nova pessoa</span></h2>
       <div class="grid2">
         <div><label class="f">Nome</label><input id="pe-nome" placeholder="Ex.: Ana"></div>
         <div><label class="f">Celular que recebe</label><input id="pe-notify" list="dl-notify" placeholder="digite para buscar…"></div>
@@ -367,7 +383,7 @@
       <div class="aviso" id="pe-msg"></div>
     </div>
     <div class="card">
-      <h2>Pessoas</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</h2>
       <div id="lista-pessoas"></div>
     </div>
   </section>
@@ -375,7 +391,7 @@
   <!-- =========================== AJUSTES =========================== -->
   <section id="s-ajustes">
     <div class="card">
-      <h2>Comportamento</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Comportamento</h2>
       <div class="grid2">
         <div><label class="f">Avisar quando faltar (m)</label><input type="number" id="aj-limiar" step="100"></div>
         <div><label class="f">Intervalo mínimo entre avisos (min)</label><input type="number" id="aj-cooldown"></div>
@@ -389,13 +405,13 @@
         <div><label class="f">Avisar saída até (min antes)</label><input type="number" id="aj-janela" step="5"></div>
       </div>
       <div class="row">
-        <label class="chip" id="aj-sim-wrap"><input type="checkbox" id="aj-sim"> Modo simulação (não envia nada)</label>
+        <label class="switch"><input type="checkbox" id="aj-sim"><span class="tr"></span> Modo simulação (não envia nada)</label>
       </div>
       <div class="row"><button class="bt" onclick="salvarAjustes()">Salvar ajustes</button></div>
       <div class="aviso" id="aj-msg"></div>
     </div>
     <div class="card">
-      <h2>Casa / zona de referência</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-home"/></svg>Casa / zona de referência</h2>
       <p class="meta" style="margin:0 0 6px">Usada para saber o que é <b>ida</b> (saindo de casa) e <b>volta</b> (para casa) nos trajetos.</p>
       <label class="f">Entidade do HA (ex.: <code>zone.home</code>)</label>
       <input id="casa-entidade" placeholder="zone.home">
@@ -414,11 +430,11 @@
       <div class="aviso" id="casa-msg"></div>
     </div>
     <div class="card">
-      <h2>Rastreios ativos<span class="tag" id="tag-rastreios"></span></h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Rastreios ativos<span class="tag" id="tag-rastreios"></span></h2>
       <div id="lista-rastreios"></div>
     </div>
     <div class="card">
-      <h2>Atividade</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-clock"/></svg>Atividade</h2>
       <div class="log" id="log"></div>
     </div>
   </section>
@@ -508,6 +524,21 @@ function pessoaPorNome(nome){
   nome = String(nome||"").trim();
   return (est.pessoas||[]).find(p=>p.nome===nome) || (est.pessoas||[]).find(p=>p.id===nome);
 }
+let destinosLinha = [];
+async function carregarDestinos(){
+  const sigla = document.getElementById("tr-linha").value.trim();
+  const dl = document.getElementById("dl-destinos");
+  destinosLinha = [];
+  dl.innerHTML = "";
+  if (!sigla) return;
+  try {
+    const r = await api("/api/paradas?linha="+encodeURIComponent(sigla));
+    if (r && r.ok){
+      destinosLinha = r.paradas||[];
+      dl.innerHTML = destinosLinha.map(p=>`<option value="${esc(p.nome)}"></option>`).join("");
+    }
+  } catch(e){}
+}
 
 /* ------------------------------------------------ cidade */
 function renderCidade(){
@@ -590,7 +621,7 @@ function renderTrajetos(){
     return `<div class="grupo-titulo">${esc(nome)}</div>` + porPessoa[pid].map(t=>{
       const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
       return `<div class="item"><div>
-        <div class="nome">Linha ${esc(t.linha)} · ${t.sentido==="volta"?"volta para casa":"ida de casa"}</div>
+        <div class="nome">Linha ${esc(t.linha)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
         <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
       </div><div class="dir">
         <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
@@ -605,9 +636,11 @@ function novoTrajeto(){
   document.getElementById("tr-titulo").textContent = "Novo trajeto";
   document.getElementById("tr-pessoa").value = "";
   document.getElementById("tr-linha").value = "";
-  document.getElementById("tr-sentido").value = "ida";
+  document.getElementById("tr-destino").value = "";
   document.getElementById("tr-horarios").value = "";
   document.getElementById("tr-ativo").checked = true;
+  destinosLinha = [];
+  document.getElementById("dl-destinos").innerHTML = "";
   renderDiasTrajeto([1,2,3,4,5]);
 }
 function editarTrajeto(id){
@@ -616,10 +649,11 @@ function editarTrajeto(id){
   document.getElementById("tr-titulo").textContent = "Editando trajeto · linha "+t.linha;
   document.getElementById("tr-pessoa").value = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa || "";
   document.getElementById("tr-linha").value = t.linha||"";
-  document.getElementById("tr-sentido").value = t.sentido||"ida";
+  document.getElementById("tr-destino").value = (t.destino && t.destino.nome) || "";
   document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
   document.getElementById("tr-ativo").checked = !!t.ativo;
   renderDiasTrajeto(t.dias||[]);
+  carregarDestinos();
   trocarAba("trajetos");
 }
 async function salvarTrajeto(){
@@ -627,12 +661,14 @@ async function salvarTrajeto(){
   const horarios = document.getElementById("tr-horarios").value.split(",").map(s=>s.trim()).filter(Boolean);
   const pessoa = pessoaPorNome(document.getElementById("tr-pessoa").value);
   if (!pessoa) return msg("tr-msg","Escolha a pessoa (digite o nome).", false);
+  const destNome = document.getElementById("tr-destino").value.trim();
+  const dest = destinosLinha.find(p=>p.nome===destNome);
   const trajeto = {
     id: editandoTrajeto,
     ativo: document.getElementById("tr-ativo").checked,
     pessoa: pessoa.id,
     linha: document.getElementById("tr-linha").value.trim(),
-    sentido: document.getElementById("tr-sentido").value,
+    destino: destNome ? {cod: dest?dest.cod:"", nome: destNome, lat: dest?dest.lat:null, lon: dest?dest.lon:null} : {},
     dias, horarios
   };
   const r = await api("/api/trajetos", {trajeto});
@@ -757,10 +793,9 @@ async function carregarMapa(primeiro){
       camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
         .bindPopup(`<b>${esc(t.pessoa)}</b><br>linha ${esc(t.linha)} · ${esc(p.nome)}<br>${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`));
     }
-    if (t.casa){
-      camadaOutros.addLayer(L.polyline(t.casa.caminho||[], {color:"#37b169", weight:2, opacity:.5, dashArray:"3 7", interactive:false}));
-      camadaOutros.addLayer(L.circleMarker([t.casa.lat,t.casa.lon], {radius:5, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
-        .bindPopup(`<b>${esc(t.pessoa)}</b><br>desça em ${esc(t.casa.nome)}<br>${fmtDist(t.casa.dist_m)} · ~${Math.round(t.casa.tempo_min)} min até casa`));
+    if (t.destino && t.destino.lat != null && t.destino.lon != null){
+      camadaOutros.addLayer(L.circleMarker([t.destino.lat,t.destino.lon], {radius:7, color:"#3d7dff", weight:3, fillColor:"#fff", fillOpacity:.95, bubblingMouseEvents:false})
+        .bindPopup(`<b>Destino de ${esc(t.pessoa)}</b><br>${esc(t.destino.nome)}`));
     }
   });
   // casa (zona)
@@ -804,7 +839,7 @@ async function carregarMapa(primeiro){
     const risco = b ? ({"ok":"dá tempo","correr":"corra!","perdeu":"pode perder","sem-previsao":"sem previsão"}[b.risco]||"") : "";
     const total = b && b.tempo_total_min!=null ? ` · total ~${Math.round(b.tempo_total_min)} min` : "";
     return `<div class="item"><div>
-      <div class="nome">${esc(t.pessoa)} · linha ${esc(t.linha)} (${t.sentido==="volta"?"volta":"ida"})</div>
+      <div class="nome">${esc(t.pessoa)} · linha ${esc(t.linha)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
       <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
       <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}</div>
     </div></div>`;
