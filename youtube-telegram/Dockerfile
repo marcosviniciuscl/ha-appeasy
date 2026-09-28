@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="1.0.2"
+ARG BUILD_VERSION="1.0.4"
 ARG BUILD_ARCH="amd64"
 
 FROM ghcr.io/home-assistant/base:latest
@@ -13,7 +13,7 @@ LABEL \
   io.hass.arch="aarch64|amd64|armv7|armhf" \
   org.opencontainers.image.title="YouTube para Telegram" \
   org.opencontainers.image.description="Baixa vídeos e áudios do YouTube pelo Telegram, entrega no chat e usa o MinIO para arquivos grandes." \
-  org.opencontainers.image.source="https://github.com/marcosviniciuscl/ha-addon-youtube" \
+  org.opencontainers.image.source="https://github.com/marcosviniciuscl/ha-appeasy" \
   org.opencontainers.image.licenses="MIT"
 
 # ffmpeg é necessário para juntar vídeo+áudio e para converter em MP3.

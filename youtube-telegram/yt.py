@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Funções do YouTube (yt-dlp): links, opções, download e progresso.
 
-Baseado na lógica já validada do bot do Holyrics, adaptada para o add-on.
+Baseado na lógica já validada do bot do Holyrics, adaptada para o App.
 """
 from __future__ import annotations
 
@@ -355,7 +355,7 @@ def dica_erro_youtube(e: Exception) -> str:
             "na opção <code>youtube.cookies</code>) e tente de novo."
         )
     if "ffmpeg" in baixo:
-        return "\n\n👉 O ffmpeg não foi encontrado dentro do add-on."
+        return "\n\n👉 O ffmpeg não foi encontrado dentro do App."
     if "unavailable" in baixo or "private" in baixo:
         return "\n\n👉 O vídeo parece privado ou indisponível."
     if "unsupported url" in baixo:

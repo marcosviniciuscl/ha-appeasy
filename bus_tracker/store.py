@@ -1,0 +1,58 @@
+"""Persistência em /data (sobrevive a reinícios e atualizações do App)."""
+
+import json
+import logging
+import os
+import tempfile
+
+log = logging.getLogger("bus_tracker.store")
+
+DIR_DADOS = os.environ.get("DIR_DADOS", "/data")
+ARQ_CONFIG = os.path.join(DIR_DADOS, "bus_tracker.json")
+
+
+def _padroes():
+    return {
+        "ajustes": {
+            "limiar_aviso_m": 2500,       # avisa quando faltar menos que isso até o ponto
+            "cooldown_min": 45,           # tempo mínimo entre avisos do mesmo ônibus
+            "velocidade_min_kmh": 12,     # usada para o ETA quando o ônibus está parado
+            "fuso": "",                   # vazio = usa o fuso da cidade escolhida
+            "intervalo_segundos": 30,
+            "atualizacao_rastreio_s": 90, # cadência do Live Activity
+            "simulacao": False,           # true = não envia nada, só registra no log
+        },
+        "pessoas": [],
+        "regras": [],
+        "mapa": {"onibus": [], "pessoas": [], "rotas": True, "pontos": True},
+        "historico": [],
+    }
+
+
+def carregar():
+    cfg = _padroes()
+    if os.path.exists(ARQ_CONFIG):
+        try:
+            with open(ARQ_CONFIG, encoding="utf-8") as f:
+                salvo = json.load(f)
+            for chave, valor in salvo.items():
+                if isinstance(valor, dict) and isinstance(cfg.get(chave), dict):
+                    cfg[chave].update(valor)
+                else:
+                    cfg[chave] = valor
+        except Exception as e:
+            log.error(f"config corrompida, usando padrões: {e}")
+    return cfg
+
+
+def salvar(cfg):
+    os.makedirs(DIR_DADOS, exist_ok=True)
+    try:
+        fd, tmp = tempfile.mkstemp(dir=DIR_DADOS, prefix=".bustracker-")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, ARQ_CONFIG)
+        return True
+    except Exception as e:
+        log.error(f"falha ao salvar config: {e}")
+        return False

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""YouTube para Telegram — add-on do Home Assistant.
+"""YouTube para Telegram — App do Home Assistant.
 
 Recebe links do YouTube, oferece opções de vídeo/áudio, baixa e entrega no chat.
 Se o arquivo passa do limite do Telegram, sobe para o MinIO e envia um link
@@ -180,7 +180,7 @@ async def entregar(mensagem, destino: Path, selecao: dict, info: dict,
         raise RuntimeError(
             f"o arquivo tem {yt.fmt_bytes(tamanho)} e passa do limite de "
             f"{cfg.max_envio_mb} MB do Telegram, e o MinIO não está ativo/configurado. "
-            "Ative o MinIO nas opções do add-on."
+            "Ative o MinIO nas opções do App."
         )
 
     objeto = f"{PREFIXO_MINIO}{time.strftime('%Y%m%d-%H%M%S')}-{yt.slug(destino.name)}"
@@ -239,7 +239,7 @@ async def cmd_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.effective_message.reply_text(
         f"Seu ID: <code>{usuario.id}</code>\n"
         f"Chat: <code>{update.effective_chat.id}</code>\n\n"
-        "Use o ID na opção <code>usuarios_autorizados</code> do add-on.",
+        "Use o ID na opção <code>usuarios_autorizados</code> do App.",
         parse_mode=ParseMode.HTML,
     )
 
@@ -248,7 +248,7 @@ async def tratar_links(update: Update, context: ContextTypes.DEFAULT_TYPE, urls:
     cfg: config_mod.Config = context.bot_data["cfg"]
     msg = update.effective_message
     if not cfg.yt_ativo:
-        await msg.reply_text("🔗 O download do YouTube está desativado nas opções do add-on.")
+        await msg.reply_text("🔗 O download do YouTube está desativado nas opções do App.")
         return
 
     pendentes: dict = context.bot_data.setdefault("yt_pendentes", {})

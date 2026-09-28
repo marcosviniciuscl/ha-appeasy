@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bus Tracker</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --linha:#2a2f3a;
+    --txt:#e8eaf0; --txt2:#9aa3b2; --acento:#f5a524; --ok:#37b169; --erro:#e5484d;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f4f5f7; --card:#fff; --card2:#f0f1f4; --linha:#dde0e6;
+           --txt:#12151a; --txt2:#5c6472; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{background:var(--bg);color:var(--txt);
+       font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--linha);
+         position:sticky;top:0;background:var(--bg);z-index:20}
+  header .logo{width:30px;height:30px;border-radius:8px;background:var(--acento);display:grid;place-items:center;
+               color:#20160a;font-weight:700;font-size:15px}
+  header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.2px}
+  header .sub{font-size:12px;color:var(--txt2)}
+  header .dir{margin-left:auto;text-align:right;font-size:12px;color:var(--txt2)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}
+  .dot.off{background:var(--erro)}
+  nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;position:sticky;top:55px;background:var(--bg);z-index:19;
+      border-bottom:1px solid var(--linha)}
+  nav button{flex:0 0 auto;background:var(--card);color:var(--txt2);border:1px solid var(--linha);border-radius:999px;
+             padding:7px 14px;font-size:13.5px;font-weight:550;cursor:pointer}
+  nav button.on{background:var(--acento);color:#20160a;border-color:var(--acento)}
+  main{padding:14px;max-width:920px;margin:0 auto 40px}
+  section{display:none}
+  section.on{display:block}
+  .card{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:14px;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
+  .card h2 .tag{margin-left:auto;font-size:12px;color:var(--txt2);font-weight:500}
+  label.f{display:block;font-size:12.5px;color:var(--txt2);margin:10px 0 4px}
+  input,select,textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--linha);
+        border-radius:9px;padding:9px 10px;font-size:14px;font-family:inherit}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--linha);
+        border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer;user-select:none}
+  .chip.on{background:rgba(245,165,36,.16);border-color:var(--acento);color:var(--txt)}
+  .chip input{display:none}
+  button.bt{border:none;border-radius:9px;padding:9px 14px;font-size:13.5px;font-weight:600;cursor:pointer;
+            background:var(--acento);color:#20160a}
+  button.bt.sec{background:var(--card2);color:var(--txt);border:1px solid var(--linha)}
+  button.bt.del{background:transparent;color:var(--erro);border:1px solid var(--linha);padding:6px 10px;font-size:12.5px}
+  button.bt.sm{padding:6px 10px;font-size:12.5px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--linha);border-radius:11px;
+        margin-bottom:8px;background:var(--card2)}
+  .item .nome{font-weight:600}
+  .item .meta{font-size:12px;color:var(--txt2)}
+  .item .dir{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .pill{font-size:11.5px;border-radius:999px;padding:3px 9px;background:var(--card);border:1px solid var(--linha);color:var(--txt2)}
+  .pill.ok{color:var(--ok);border-color:rgba(55,177,105,.4)}
+  .pill.no{color:var(--txt2)}
+  #mapa{height:min(62vh,520px);border-radius:12px;border:1px solid var(--linha);overflow:hidden}
+  .buspin{background:var(--acento);color:#20160a;font-weight:700;font-size:11.5px;border-radius:7px;
+          padding:3px 7px;box-shadow:0 2px 6px rgba(0,0,0,.35);white-space:nowrap;border:2px solid #fff8}
+  .buspin.parado{background:#8a94a6;color:#0f1115}
+  .log{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:260px;overflow:auto}
+  .log div{padding:3px 0;border-bottom:1px solid var(--linha);color:var(--txt2)}
+  .log b{color:var(--txt);font-weight:500}
+  .vazio{color:var(--txt2);font-size:13.5px;text-align:center;padding:14px}
+  .aviso{font-size:13px;border-radius:9px;padding:9px 11px;margin-top:10px;display:none}
+  .aviso.ok{background:rgba(55,177,105,.14);color:var(--ok);display:block}
+  .aviso.erro{background:rgba(229,72,77,.14);color:var(--erro);display:block}
+  .leaflet-container{background:#20242c}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🚌</div>
+  <div>
+    <h1>Bus Tracker</h1>
+    <div class="sub" id="hdr-sub">carregando…</div>
+  </div>
+  <div class="dir">
+    <div><span class="dot off" id="dot"></span><span id="hdr-ha">HA</span></div>
+    <div id="hdr-ciclo">—</div>
+  </div>
+</header>
+
+<nav>
+  <button data-t="mapa" class="on">Mapa</button>
+  <button data-t="onibus">Ônibus</button>
+  <button data-t="avisos">Avisos</button>
+  <button data-t="pessoas">Pessoas</button>
+  <button data-t="ajustes">Ajustes</button>
+</nav>
+
+<main>
+  <!-- ============================= MAPA ============================= -->
+  <section id="s-mapa" class="on">
+    <div class="card" style="padding:10px">
+      <div id="mapa"></div>
+      <div class="row" style="margin-top:10px">
+        <span class="pill" id="m-onibus">0 ônibus</span>
+        <span class="pill" id="m-pessoas">0 pessoas</span>
+        <button class="bt sec sm" onclick="carregarMapa(true)">Atualizar</button>
+        <button class="bt sec sm" onclick="mostrarTudo()">Mostrar tudo</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Pontos de embarque</h2>
+      <div id="lista-pontos"></div>
+    </div>
+  </section>
+
+  <!-- ============================ ÔNIBUS ============================ -->
+  <section id="s-onibus">
+    <div class="card">
+      <h2>O que exibir no mapa<span class="tag" id="tag-obs"></span></h2>
+      <label class="f">Linhas</label>
+      <div class="chips" id="chips-linhas"></div>
+      <label class="f">Pessoas</label>
+      <div class="chips" id="chips-pessoas"></div>
+      <div class="row"><button class="bt" onclick="salvarMapa()">Salvar exibição</button></div>
+    </div>
+    <div class="card">
+      <h2>Ônibus ao vivo<span class="tag" id="tag-qtd"></span></h2>
+      <div id="lista-onibus"></div>
+    </div>
+  </section>
+
+  <!-- ============================ AVISOS ============================ -->
+  <section id="s-avisos">
+    <div class="card">
+      <h2 id="av-titulo">Novo aviso</h2>
+      <label class="f">Linha</label>
+      <select id="av-linha"></select>
+      <label class="f">Avisar quem</label>
+      <div class="chips" id="av-pessoas"></div>
+      <label class="f">Dias da semana</label>
+      <div class="chips" id="av-dias"></div>
+      <div class="grid2">
+        <div><label class="f">A partir de</label><input type="time" id="av-inicio" value="06:30"></div>
+        <div><label class="f">Até</label><input type="time" id="av-fim" value="07:10"></div>
+      </div>
+      <div class="row">
+        <label class="chip" id="av-ativo-wrap"><input type="checkbox" id="av-ativo" checked> Ativo</label>
+      </div>
+      <div class="row">
+        <button class="bt" onclick="salvarRegra()">Salvar aviso</button>
+        <button class="bt sec" onclick="novaRegra()">Limpar</button>
+        <button class="bt sec" onclick="testarAgora()">Testar agora</button>
+      </div>
+      <div class="aviso" id="av-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Avisos configurados</h2>
+      <div id="lista-regras"></div>
+    </div>
+  </section>
+
+  <!-- =========================== PESSOAS =========================== -->
+  <section id="s-pessoas">
+    <div class="card">
+      <h2 id="pe-titulo">Nova pessoa</h2>
+      <div class="grid2">
+        <div><label class="f">Nome</label><input id="pe-nome" placeholder="Marcos"></div>
+        <div><label class="f">Celular que recebe</label><select id="pe-notify"></select></div>
+      </div>
+      <label class="f">Localização (pessoa/rastreador do HA)</label>
+      <select id="pe-entidade"></select>
+      <div class="row">
+        <button class="bt" onclick="salvarPessoa()">Salvar pessoa</button>
+        <button class="bt sec" onclick="novaPessoa()">Limpar</button>
+      </div>
+      <div class="aviso" id="pe-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Pessoas</h2>
+      <div id="lista-pessoas"></div>
+    </div>
+  </section>
+
+  <!-- =========================== AJUSTES =========================== -->
+  <section id="s-ajustes">
+    <div class="card">
+      <h2>Comportamento dos avisos</h2>
+      <div class="grid2">
+        <div><label class="f">Avisar quando faltar (m)</label><input type="number" id="aj-limiar" step="100"></div>
+        <div><label class="f">Intervalo mínimo entre avisos (min)</label><input type="number" id="aj-cooldown"></div>
+        <div><label class="f">Velocidade mínima p/ cálculo (km/h)</label><input type="number" id="aj-vel" step="1"></div>
+        <div><label class="f">Leitura da API a cada (s)</label><input type="number" id="aj-intervalo" step="5"></div>
+        <div><label class="f">Atualizar rastreio a cada (s)</label><input type="number" id="aj-rastreio" step="10"></div>
+        <div><label class="f">Fuso horário</label><input id="aj-fuso"></div>
+      </div>
+      <div class="row">
+        <label class="chip" id="aj-sim-wrap"><input type="checkbox" id="aj-sim"> Modo simulação (não envia nada)</label>
+      </div>
+      <div class="row"><button class="bt" onclick="salvarAjustes()">Salvar ajustes</button></div>
+      <div class="aviso" id="aj-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Rastreios ativos<span class="tag" id="tag-rastreios"></span></h2>
+      <div id="lista-rastreios"></div>
+    </div>
+    <div class="card">
+      <h2>Atividade</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/leaflet.js"></script>
+<script>
+/* O painel roda dentro do ingress do HA (/api/hassio_ingress/<token>/),
+   então TODO caminho daqui para baixo precisa ser relativo. */
+const BASE = location.pathname.replace(/\/$/, "") + "/";
+const DIAS = ["seg","ter","qua","qui","sex","sáb","dom"];
+let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
+let mapa, camada;
+let editandoRegra = null, editandoPessoa = null;
+let selLinhas = new Set(), selPessoas = new Set();
+
+/* ------------------------------------------------ navegação */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+    document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    document.getElementById("s-"+b.dataset.t).classList.add("on");
+    if (b.dataset.t==="mapa") setTimeout(()=>mapa && mapa.invalidateSize(), 60);
+  };
+});
+
+function msg(id, texto, ok=true){
+  const el = document.getElementById(id);
+  el.className = "aviso " + (ok?"ok":"erro");
+  el.textContent = texto;
+  setTimeout(()=>{ el.className = "aviso"; }, 5000);
+}
+async function api(url, dados){
+  const alvo = BASE + String(url).replace(/^\//, "");
+  const r = await fetch(alvo, dados ? {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)} : undefined);
+  return await r.json();
+}
+const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDist = m => m==null ? "?" : (m>=1000 ? (m/1000).toFixed(1)+" km" : Math.round(m)+" m");
+const fmtHora = ts => ts ? new Date(ts*1000).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—";
+
+/* ------------------------------------------------ estado geral */
+async function carregarEstado(){
+  est = await api("/api/estado");
+  const nomeCidade = (est.cidade && est.cidade.nome) ? est.cidade.nome + " · " : "";
+  document.getElementById("hdr-sub").textContent =
+    nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
+  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects();
+  const st = est.status||{};
+  document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
+  document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
+  document.getElementById("hdr-ciclo").textContent = st.ultimo_ciclo ? "leitura "+fmtHora(st.ultimo_ciclo) : "aguardando";
+  document.getElementById("tag-obs").textContent = (st.onibus||0)+" no mapa";
+  document.getElementById("tag-rastreios").textContent = (st.rastreios||0)+" ativo(s)";
+  if (st.usuario) document.getElementById("hdr-ciclo").textContent += " · "+st.usuario;
+}
+
+function preencherSelects(){
+  const sel = document.getElementById("av-linha");
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">— escolha a linha —</option>' + (est.linhas||[]).map(l=>
+    `<option value="${esc(l.sigla)}">${esc(l.sigla)} · ${esc(l.nome)}</option>`).join("");
+  sel.value = atual;
+
+  const nots = (est.ha&&est.ha.notificacoes)||[];
+  const peN = document.getElementById("pe-notify");
+  const atualN = peN.value;
+  peN.innerHTML = '<option value="">— escolha o celular —</option>' + nots.map(n=>
+    `<option value="notify.${esc(n.servico)}">${esc(n.nome)}</option>`).join("");
+  peN.value = atualN;
+
+  const pes = (est.ha&&est.ha.pessoas)||[], ras = (est.ha&&est.ha.rastreadores)||[];
+  const opc = [
+    ...pes.map(p=>`<option value="${esc(p.entity_id)}">${esc(p.nome)} (pessoa)</option>`),
+    ...ras.filter(r=>r.tem_gps).map(r=>`<option value="${esc(r.entity_id)}">${esc(r.nome)} (rastreador)</option>`)
+  ];
+  const peE = document.getElementById("pe-entidade");
+  const atualE = peE.value;
+  peE.innerHTML = '<option value="">— sem localização —</option>' + opc.join("");
+  peE.value = atualE;
+}
+
+/* ------------------------------------------------ mapa */
+function centroMapa(){
+  return (est.cidade && est.cidade.centro) || [-12.2664,-38.9663];
+}
+function iniciarMapa(){
+  if (mapa) return;
+  mapa = L.map("mapa", {zoomControl:true, attributionControl:true}).setView(centroMapa(), 13);
+  L.tileLayer(BASE + "api/tile/{z}/{x}/{y}.png", {
+    maxZoom:19, attribution:"© OpenStreetMap"
+  }).addTo(mapa);
+  camada = L.layerGroup().addTo(mapa);
+}
+
+async function carregarMapa(primeiro){
+  iniciarMapa();
+  const d = await api("/api/mapa");
+  const norm = s => String(s||"").replace(/^0+/,"") || "0";
+  const sel = new Set((est.mapa.onibus||[]).map(norm));
+  const exibidos = (d.onibus||[]).filter(b=> sel.size===0 || sel.has(norm(b.linha)));
+  const novos = [];
+  exibidos.forEach(b=>{
+    const cls = b.em_movimento ? "" : " parado";
+    const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)} km/h` : "";
+    const ic = L.divIcon({className:"", html:`<div class="buspin${cls}">${esc(b.linha)} · ${esc(b.id)}${vel}</div>`, iconSize:[0,0], iconAnchor:[24,10]});
+    novos.push(L.marker([b.lat,b.lon], {icon:ic}).bindPopup(`<b>Linha ${esc(b.linha)}</b><br>Veículo ${esc(b.id)}<br>${b.em_movimento?"em movimento":"parado"}${vel}`));
+  });
+  (d.lugares||[]).forEach(p=>{
+    novos.push(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:3, fillColor:"#3d7dff", fillOpacity:.35})
+      .bindPopup(`<b>${esc(p.nome)}</b>`));
+  });
+  (d.pontos||[]).forEach(p=>{
+    novos.push(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:2, fillColor:"#f5a524", fillOpacity:.5})
+      .bindPopup(`<b>${esc(p.nome)}</b><br>para ${esc(p.pessoa)} · linha ${esc(p.linha)}<br>${fmtDist(p.dist_pessoa)} da pessoa`));
+  });
+  const rotas = d.rotas||{};
+  Object.keys(rotas).forEach(sigla=>{
+    rotas[sigla].forEach(pts=>{
+      if (pts.length>1) novos.push(L.polyline(pts, {color:"#f5a524", weight:2, opacity:.35, dashArray:"1 6" }));
+    });
+  });
+  camada.clearLayers();
+  novos.forEach(o=>camada.addLayer(o));
+  document.getElementById("m-onibus").textContent = (d.onibus||[]).length+" ônibus";
+  document.getElementById("m-pessoas").textContent = (d.lugares||[]).length+" pessoas";
+  const pts = d.pontos||[];
+  document.getElementById("lista-pontos").innerHTML = pts.length ? pts.map(p=>
+    `<div class="item"><div><div class="nome">${esc(p.nome)}</div>
+     <div class="meta">linha ${esc(p.linha)} · para ${esc(p.pessoa)} · ${fmtDist(p.dist_pessoa)} da pessoa</div></div></div>`
+  ).join("") : '<div class="vazio">Nenhum ponto calculado ainda. Os pontos aparecem quando o app localiza a parada da linha mais próxima de cada pessoa.</div>';
+  if (primeiro && novos.length===0) mapa.setView(centroMapa(), 13);
+}
+
+function mostrarTudo(){
+  const linhas = [...new Set((dadosOnibus||[]).map(b=>b.linha))];
+  selLinhas = new Set(linhas); selPessoas = new Set(est.pessoas.map(p=>p.id));
+  salvarMapa();
+}
+
+/* ------------------------------------------------ ônibus */
+function chips(container, itens, selecionados, aoAlternar){
+  const cx = document.getElementById(container);
+  cx.innerHTML = itens.length ? itens.map(it=>`<label class="chip ${selecionados.has(it.id)?"on":""}" data-id="${esc(it.id)}">
+     <input type="checkbox" ${selecionados.has(it.id)?"checked":""}>${esc(it.rotulo)}</label>`).join("")
+    : '<div class="vazio">Nada para escolher ainda.</div>';
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{
+      e.preventDefault();
+      const id = c.dataset.id;
+      if (selecionados.has(id)) selecionados.delete(id); else selecionados.add(id);
+      c.classList.toggle("on", selecionados.has(id));
+      c.querySelector("input").checked = selecionados.has(id);
+      if (aoAlternar) aoAlternar();
+    };
+  });
+}
+function renderMapaChips(){
+  const todas = new Set([...(est.linhas||[]).map(l=>l.sigla), ...(est.linhas_observadas||[])]);
+  selLinhas = new Set(est.mapa.onibus||[]);
+  chips("chips-linhas", [...todas].sort().map(s=>({id:s, rotulo:s})), selLinhas);
+  selPessoas = new Set(est.mapa.pessoas||[]);
+  chips("chips-pessoas", (est.pessoas||[]).map(p=>({id:p.id, rotulo:p.nome})), selPessoas);
+}
+let dadosOnibus = [];
+async function carregarOnibus(){
+  const d = await api("/api/mapa");
+  dadosOnibus = d.onibus||[];
+  document.getElementById("tag-qtd").textContent = dadosOnibus.length+" em circulação";
+  const porLinha = {};
+  dadosOnibus.forEach(b=>{ (porLinha[b.linha] = porLinha[b.linha]||[]).push(b); });
+  const chaves = Object.keys(porLinha).sort();
+  document.getElementById("lista-onibus").innerHTML = chaves.length ? chaves.map(l=>
+    `<div style="margin-bottom:10px"><div class="meta" style="font-weight:600;margin-bottom:6px">Linha ${esc(l)}</div>`+
+    porLinha[l].map(b=>`<div class="item"><div>
+        <div class="nome">Veículo ${esc(b.id)}</div>
+        <div class="meta">${b.em_movimento?"em movimento":"parado"}${b.vel_kmh?" · "+Math.round(b.vel_kmh)+" km/h":""} · visto ${b.visto_ha_s}s atrás</div>
+      </div><div class="dir">
+        <button class="bt sec sm" onclick="rastrear('${esc(l)}','${esc(b.id)}')">Rastrear</button>
+      </div></div>`).join("")+"</div>"
+  ).join("") : '<div class="vazio">Nenhum ônibus no mapa agora. Os ônibus aparecem durante o horário de operação.</div>';
+}
+function rastrear(linha, bus){
+  const ps = est.pessoas.filter(p=>p.ativo!==false);
+  if (!ps.length){ alert("Cadastre uma pessoa primeiro (aba Pessoas)."); return; }
+  const nome = prompt("Rastrear para quem?\n" + ps.map((p,i)=>`${i+1}) ${p.nome}`).join("\n"), "1");
+  const idx = parseInt(nome,10)-1;
+  if (isNaN(idx) || !ps[idx]) return;
+  api("/api/rastrear/"+ps[idx].id+"/"+encodeURIComponent(linha)+"/"+encodeURIComponent(bus), {}).then(()=>{
+    carregarEstado();
+    alert("Rastreio iniciado para "+ps[idx].nome+".");
+  });
+}
+
+async function salvarMapa(){
+  await api("/api/mapa", {onibus:[...selLinhas], pessoas:[...selPessoas], rotas:true, pontos:true});
+  await carregarEstado(); carregarMapa();
+}
+
+/* ------------------------------------------------ avisos */
+function renderRegras(){
+  const el = document.getElementById("lista-regras");
+  if (!(est.regras||[]).length){ el.innerHTML = '<div class="vazio">Nenhum aviso configurado ainda.</div>'; return; }
+  el.innerHTML = est.regras.map(r=>{
+    const nomes = (r.pessoas||[]).map(id => (est.pessoas.find(p=>p.id===id)||{}).nome || id).join(", ");
+    const dias = (r.dias||[]).length===7 ? "todos os dias" : (r.dias||[]).map(d=>DIAS[d]).join(" ");
+    return `<div class="item"><div>
+      <div class="nome">Linha ${esc(r.linha)} → ${esc(nomes)}</div>
+      <div class="meta">${esc(dias)} · ${esc(r.inicio)}–${esc(r.fim)}</div>
+    </div><div class="dir">
+      <span class="pill ${r.ativo?"ok":""}">${r.ativo?"ativo":"pausado"}</span>
+      <button class="bt sec sm" onclick="editarRegra('${r.id}')">Editar</button>
+      <button class="bt del" onclick="apagarRegra('${r.id}')">Excluir</button>
+    </div></div>`;
+  }).join("");
+}
+function renderDiasChips(sel){
+  const cx = document.getElementById("av-dias");
+  cx.innerHTML = DIAS.map((d,i)=>`<label class="chip ${sel.includes(i)?"on":""}" data-d="${i}">
+     <input type="checkbox" ${sel.includes(i)?"checked":""}>${d}</label>`).join("");
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{ e.preventDefault(); c.classList.toggle("on"); c.querySelector("input").checked = c.classList.contains("on"); };
+  });
+}
+function renderPessoasChips(sel){
+  const cx = document.getElementById("av-pessoas");
+  cx.innerHTML = (est.pessoas||[]).map(p=>`<label class="chip ${sel.includes(p.id)?"on":""}" data-p="${p.id}">
+      <input type="checkbox" ${sel.includes(p.id)?"checked":""}>${esc(p.nome)}</label>`).join("") ||
+    '<div class="vazio">Cadastre uma pessoa na aba Pessoas.</div>';
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{ e.preventDefault(); c.classList.toggle("on"); c.querySelector("input").checked = c.classList.contains("on"); };
+  });
+}
+function novaRegra(){
+  editandoRegra = null;
+  document.getElementById("av-titulo").textContent = "Novo aviso";
+  document.getElementById("av-linha").value = "";
+  document.getElementById("av-inicio").value = "06:30";
+  document.getElementById("av-fim").value = "07:10";
+  document.getElementById("av-ativo").checked = true;
+  renderPessoasChips([]); renderDiasChips([1,2,3,4,5]);
+}
+function editarRegra(id){
+  const r = est.regras.find(x=>x.id===id); if (!r) return;
+  editandoRegra = id;
+  document.getElementById("av-titulo").textContent = "Editando aviso · linha "+r.linha;
+  document.getElementById("av-linha").value = r.linha;
+  document.getElementById("av-inicio").value = r.inicio;
+  document.getElementById("av-fim").value = r.fim;
+  document.getElementById("av-ativo").checked = !!r.ativo;
+  renderPessoasChips(r.pessoas||[]); renderDiasChips(r.dias||[]);
+  document.getElementById("s-avisos").scrollIntoView({behavior:"smooth"});
+}
+async function salvarRegra(){
+  const dias = [...document.querySelectorAll("#av-dias .chip.on")].map(c=>parseInt(c.dataset.d,10));
+  const pessoas = [...document.querySelectorAll("#av-pessoas .chip.on")].map(c=>c.dataset.p);
+  const regra = {
+    id: editandoRegra, ativo: document.getElementById("av-ativo").checked,
+    linha: document.getElementById("av-linha").value,
+    pessoas, dias,
+    inicio: document.getElementById("av-inicio").value,
+    fim: document.getElementById("av-fim").value
+  };
+  const r = await api("/api/regras", {regra});
+  if (r.ok){ msg("av-msg","Aviso salvo."); novaRegra(); await carregarEstado(); }
+  else msg("av-msg", r.erro||"erro ao salvar", false);
+}
+async function apagarRegra(id){
+  if (!confirm("Excluir este aviso?")) return;
+  await api("/api/regras/"+id, {});
+  await carregarEstado();
+}
+async function testarAgora(){
+  const linha = document.getElementById("av-linha").value;
+  const pessoas = [...document.querySelectorAll("#av-pessoas .chip.on")].map(c=>c.dataset.p);
+  if (!linha || !pessoas.length) return msg("av-msg","Escolha a linha e ao menos uma pessoa.", false);
+  const r = await api("/api/agora", {pessoa: pessoas[0], linha});
+  if (r.ok) msg("av-msg", `Enviado: veículo ${r.veiculo} a ${fmtDist(r.dist_ponto)} · ~${Math.round(r.eta_min)} min do ponto ${r.ponto.nome}.`);
+  else msg("av-msg", r.erro||"não deu para testar agora", false);
+}
+
+/* ------------------------------------------------ pessoas */
+function renderPessoas(){
+  const el = document.getElementById("lista-pessoas");
+  if (!(est.pessoas||[]).length){ el.innerHTML = '<div class="vazio">Nenhuma pessoa cadastrada.</div>'; return; }
+  el.innerHTML = est.pessoas.map(p=>`<div class="item"><div>
+      <div class="nome">${esc(p.nome)}</div>
+      <div class="meta">${esc((p.notify||"").replace("notify.",""))} · ${esc(p.entidade||"sem localização")}</div>
+    </div><div class="dir">
+      <label class="chip ${p.ativo!==false?"on":""}" onclick="alternarPessoa('${p.id}')"><input type="checkbox" ${p.ativo!==false?"checked":""}>ativo</label>
+      <button class="bt sec sm" onclick="testarPessoa('${p.id}')">Testar</button>
+      <button class="bt sec sm" onclick="editarPessoa('${p.id}')">Editar</button>
+      <button class="bt del" onclick="apagarPessoa('${p.id}')">Excluir</button>
+    </div></div>`).join("");
+}
+function novaPessoa(){
+  editandoPessoa = null;
+  document.getElementById("pe-titulo").textContent = "Nova pessoa";
+  ["pe-nome"].forEach(i=>document.getElementById(i).value="");
+  document.getElementById("pe-notify").value = "";
+  document.getElementById("pe-entidade").value = "";
+}
+function editarPessoa(id){
+  const p = est.pessoas.find(x=>x.id===id); if(!p) return;
+  editandoPessoa = id;
+  document.getElementById("pe-titulo").textContent = "Editando "+p.nome;
+  document.getElementById("pe-nome").value = p.nome;
+  document.getElementById("pe-notify").value = p.notify||"";
+  document.getElementById("pe-entidade").value = p.entidade||"";
+  document.getElementById("s-pessoas").scrollIntoView({behavior:"smooth"});
+}
+async function salvarPessoa(){
+  const pessoa = {
+    id: editandoPessoa,
+    nome: document.getElementById("pe-nome").value,
+    notify: document.getElementById("pe-notify").value,
+    entidade: document.getElementById("pe-entidade").value,
+    ativo: true
+  };
+  const r = await api("/api/pessoas", {pessoa});
+  if (r.ok){ msg("pe-msg","Pessoa salva."); novaPessoa(); await carregarEstado(); }
+  else msg("pe-msg", r.erro||"erro", false);
+}
+async function apagarPessoa(id){
+  if (!confirm("Excluir esta pessoa? Os avisos dela também são removidos.")) return;
+  await api("/api/pessoas/"+id, {}); await carregarEstado();
+}
+async function testarPessoa(id){
+  const r = await api("/api/teste/"+id, {});
+  msg("pe-msg", r.ok ? "Notificação de teste enviada — olhe o celular." : (r.erro||"erro"), r.ok);
+}
+async function alternarPessoa(id){
+  const p = est.pessoas.find(x=>x.id===id); if(!p) return;
+  p.ativo = !(p.ativo!==false);
+  await api("/api/pessoas", {pessoa:p}); await carregarEstado();
+}
+
+/* ------------------------------------------------ ajustes */
+function renderAjustes(){
+  const a = est.ajustes||{};
+  document.getElementById("aj-limiar").value = a.limiar_aviso_m;
+  document.getElementById("aj-cooldown").value = a.cooldown_min;
+  document.getElementById("aj-vel").value = a.velocidade_min_kmh;
+  document.getElementById("aj-intervalo").value = a.intervalo_segundos;
+  document.getElementById("aj-rastreio").value = a.atualizacao_rastreio_s;
+  document.getElementById("aj-fuso").value = a.fuso;
+  document.getElementById("aj-sim").checked = !!a.simulacao;
+}
+async function salvarAjustes(){
+  const r = await api("/api/ajustes", {
+    limiar_aviso_m: +document.getElementById("aj-limiar").value,
+    cooldown_min: +document.getElementById("aj-cooldown").value,
+    velocidade_min_kmh: +document.getElementById("aj-vel").value,
+    intervalo_segundos: +document.getElementById("aj-intervalo").value,
+    atualizacao_rastreio_s: +document.getElementById("aj-rastreio").value,
+    fuso: document.getElementById("aj-fuso").value,
+    simulacao: document.getElementById("aj-sim").checked
+  });
+  msg("aj-msg", r.ok?"Ajustes salvos.":"erro", r.ok);
+}
+function renderRastreios(d){
+  const el = document.getElementById("lista-rastreios");
+  const r = (d && d.rastreios)||[];
+  el.innerHTML = r.length ? r.map(x=>{
+    const p = est.pessoas.find(p=>p.id===x.pessoa_id)||{nome:x.pessoa_id};
+    return `<div class="item"><div><div class="nome">${esc(p.nome)} · linha ${esc(x.linha)}</div>
+      <div class="meta">veículo ${esc(x.bus_id)} · desde ${fmtHora(x.inicio)} · início ${fmtDist(x.d0)}</div></div>
+      <div class="dir"><button class="bt del" onclick="pararRastreio('${esc(x.pessoa_id)}')">Parar</button></div></div>`;
+  }).join("") : '<div class="vazio">Nenhum rastreio em andamento.</div>';
+}
+async function pararRastreio(id){ await api("/api/parar/"+id, {}); carregarMapa(); }
+function renderLog(d){
+  const l = (d && d.log)||[];
+  document.getElementById("log").innerHTML = l.length ? l.map(x=>
+    `<div><b>${esc(x.hora)}</b> ${esc(x.msg)}</div>`).join("") : '<div class="vazio">Sem eventos.</div>';
+}
+
+/* ------------------------------------------------ laços */
+async function laçoMapa(){
+  try{
+    const d = await api("/api/mapa");
+    renderLog(d); renderRastreios(d);
+  }catch(e){}
+}
+setInterval(()=>{ if (document.getElementById("s-mapa").classList.contains("on")) carregarMapa(); }, 12000);
+setInterval(()=>{ if (document.getElementById("s-onibus").classList.contains("on")) carregarOnibus(); }, 12000);
+setInterval(laçoMapa, 15000);
+setInterval(carregarEstado, 60000);
+
+(async function init(){
+  await carregarEstado();
+  novaRegra(); novaPessoa();
+  await carregarMapa(true);
+  carregarOnibus();
+  laçoMapa();
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+- Repositório passa a ser multi-App; nomenclatura "add-on" trocada por "App".
+- Aponta as URLs para o novo repositório (`ha-appeasy`).
+
 ## 1.0.3
 
 - Corrige o erro `Query is too old` no botão **Apagar agora**: o callback agora é

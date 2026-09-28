@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Configuração do add-on, lida de /data/options.json (Home Assistant).
+"""Configuração do App, lida de /data/options.json (Home Assistant).
 
 Fora do Home Assistant, dá para apontar para outro arquivo com a variável de
 ambiente YT_OPTIONS (útil para testar no PC).
@@ -55,7 +55,7 @@ class Config:
         self.log_arquivo: str = str(DIR_DADOS / "youtube-telegram.log")
 
         if not self.token:
-            sys.exit("ERRO: 'telegram_token' está vazio nas opções do add-on.")
+            sys.exit("ERRO: 'telegram_token' está vazio nas opções do App.")
 
     # ------------------------------------------------------------------ utils
     @staticmethod
