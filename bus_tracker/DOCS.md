@@ -92,7 +92,9 @@ tem mais opções na tela de configuração do Home Assistant. Por lá você mud
 - trajetos, horários e pontos de destino;
 - distância para avisar, tempos, velocidade a pé, fator de rota e margem;
 - intervalo de leitura da API e de atualização do rastreio;
-- raio de busca do destino no mapa e como tratar trajeto **sem linha escolhida**;
+- raio de busca do destino no mapa, **distância máxima até o ponto de embarque**
+  (trajetos mais longos que isso aparecem em cinza) e como tratar trajeto **sem
+  linha escolhida**;
 - fuso horário, casa/zona de referência e servidor OSRM;
 - modo simulação (não envia notificações).
 

@@ -462,6 +462,9 @@
       <p class="hint"><b>Monitoradas</b>: só considera as linhas que o app já acompanha (mapa/outros trajetos) e que passam pelo destino — rápido e previsível. <b>Cidade</b>: descobre as linhas que atendem o destino pelas previsões das paradas de lá, mesmo que você não as monitore — mais amplo, porém mais lento e menos preciso.</p>
       <label class="f">Raio de busca do destino no mapa (m)</label>
       <input type="number" id="aj-raio-destino" step="500">
+      <label class="f">Distância máxima até o ponto de embarque (m)</label>
+      <input type="number" id="aj-dist-max" step="100">
+      <p class="hint">Trajetos cujo ponto de embarque ficar além desse limite aparecem em <b>cinza</b>, marcados como "longe".</p>
       <label class="f">Avisar quando faltar (m)</label>
       <input type="number" id="aj-limiar" step="100">
       <label class="f">Intervalo mínimo entre avisos (min)</label>
@@ -1021,16 +1024,25 @@ async function carregarMapa(primeiro){
   // trajetos: caminhada (por ruas) até o ponto + ponto de embarque/desembarque
   (d.trajetos||[]).forEach(t=>{
     const p = t.ponto;
-    const ativo = !!t.agora;
+    const longe = !!t.longe;
+    const ativo = !!t.agora && !longe;
+    const corPonto = longe ? "#8a94a6" : "#37b169";
     const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
       : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
     if (caminho.length>1){
-      // animação de deslocamento; no trajeto ativo a caminhada fica mais forte
-      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:ativo?5:4,
-        opacity:ativo?.95:.8, className:"caminhando"+(ativo?" caminhoAtivo":""), interactive:false}));
+      // animação de deslocamento; no trajeto ativo a caminhada fica mais forte.
+      // No trajeto "longe" fica cinza e sem animação.
+      camadaOutros.addLayer(L.polyline(caminho, {color:corPonto, weight:ativo?5:4,
+        opacity:longe?.5:(ativo?.95:.8), className:longe?"":"caminhando"+(ativo?" caminhoAtivo":""),
+        interactive:false}));
     }
     if (p){
-      if (ativo){
+      if (longe){
+        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#8a94a6", weight:2,
+          fillColor:"#8a94a6", fillOpacity:.3, bubblingMouseEvents:false})
+          .bindPopup(popIco("ic-marker", "#8a94a6", esc(p.nome),
+            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · LONGE (limite ${fmtDist(t.dist_max_m||0)})`)));
+      } else if (ativo){
         // ponto de embarque do trajeto em andamento: borda azul piscando
         camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:4,
           fillColor:"#3d7dff", fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
@@ -1091,6 +1103,12 @@ async function carregarMapa(primeiro){
     const risco = b ? ({"ok":"dá tempo","correr":"corra!","perdeu":"pode perder","sem-previsao":"sem previsão"}[b.risco]||"") : "";
     const total = b && b.tempo_total_min!=null ? ` · total ~${Math.round(b.tempo_total_min)} min` : "";
     const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
+    if (t.longe){
+      return `<div class="item" style="opacity:.5;border-style:dashed"><div>
+        <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
+        <div class="meta">ponto ${esc(t.ponto.nome)} a ${fmtDist(t.ponto.dist_m)} — <b>longe</b> (limite ${fmtDist(t.dist_max_m||0)})</div>
+      </div></div>`;
+    }
     return `<div class="item"><div>
       <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
       <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
@@ -1322,11 +1340,13 @@ function renderAjustes(){
   document.getElementById("aj-janela").value = a.janela_saida_min;
   document.getElementById("aj-semlinha").value = a.trajetos_sem_linha || "monitoradas";
   document.getElementById("aj-raio-destino").value = a.raio_destino_m || 3000;
+  document.getElementById("aj-dist-max").value = a.dist_max_embarque_m || 2000;
 }
 async function salvarAjustes(){
   const r = await api("/api/ajustes", {
     trajetos_sem_linha: document.getElementById("aj-semlinha").value,
     raio_destino_m: +document.getElementById("aj-raio-destino").value || 3000,
+    dist_max_embarque_m: +document.getElementById("aj-dist-max").value || 2000,
     limiar_aviso_m: +document.getElementById("aj-limiar").value,
     cooldown_min: +document.getElementById("aj-cooldown").value,
     velocidade_min_kmh: +document.getElementById("aj-vel").value,

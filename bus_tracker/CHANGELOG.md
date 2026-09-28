@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.39.0
+
+- **Limite de caminhada configurável** (Ajustes → *Distância máxima até o ponto
+  de embarque*, padrão 2 km).
+- Trajetos cujo ponto de embarque fica **além do limite** aparecem em **cinza**
+  ("longe"), no mapa e na lista, sem destaque de ônibus — informando a distância
+  e o limite. Se houver um ponto dentro do limite, ele é preferido.
+
 ## 0.38.0
 
 - **Ponto de embarque fixo**: a parada não muda mais conforme o ônibus anda
