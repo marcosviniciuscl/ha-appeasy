@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ class Config:
 
         # --- Telegram -------------------------------------------------------
         self.token: str = str(bruto.get("telegram_token") or "").strip()
-        self.usuarios: set[int] = {int(u) for u in (bruto.get("usuarios_autorizados") or [])}
+        self.usuarios: set[int] = self._ids_usuarios(bruto.get("usuarios_autorizados"))
         self.aceitar_grupos: bool = bool(bruto.get("aceitar_grupos", False))
 
         # --- YouTube --------------------------------------------------------
@@ -58,6 +59,23 @@ class Config:
             sys.exit("ERRO: 'telegram_token' está vazio nas opções do App.")
 
     # ------------------------------------------------------------------ utils
+    @staticmethod
+    def _ids_usuarios(valor) -> set[int]:
+        """Aceita IDs separados por vírgula/espaço ou uma lista (compatível)."""
+        if valor is None:
+            return set()
+        if isinstance(valor, (list, tuple, set)):
+            itens = valor
+        else:
+            itens = re.split(r"[,;\s]+", str(valor).strip())
+        ids: set[int] = set()
+        for item in itens:
+            try:
+                ids.add(int(str(item).strip()))
+            except (TypeError, ValueError):
+                continue
+        return ids
+
     @staticmethod
     def _ler(caminho: Path) -> dict:
         try:

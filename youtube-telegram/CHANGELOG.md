@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5
+
+- `usuarios_autorizados` agora é um campo de texto com IDs separados por vírgula.
+  Contorna o bug da UI do HA que não mostra os botões de adicionar/remover em
+  opções do tipo lista.
+
 ## 1.0.4
 
 - Repositório passa a ser multi-App; nomenclatura "add-on" trocada por "App".

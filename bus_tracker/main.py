@@ -10,6 +10,7 @@ serve o painel web (aba do Home Assistant via ingress).
 import json
 import logging
 import os
+import re
 import signal
 import sys
 import threading
@@ -83,7 +84,8 @@ def main():
 
     if opcoes.get("intervalo_segundos"):
         cfg["ajustes"]["intervalo_segundos"] = int(opcoes["intervalo_segundos"])
-    linhas_extras = [str(s) for s in (opcoes.get("linhas_monitoradas") or [])]
+    linhas_extras = [s for s in re.split(r"[,;\s]+", str(opcoes.get("linhas_monitoradas") or ""))
+                     if s]
     motor = Motor(cfg, store.salvar, linhas_extras=linhas_extras)
 
     if not ha.token():
