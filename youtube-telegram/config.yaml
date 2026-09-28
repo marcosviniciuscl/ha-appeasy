@@ -1,5 +1,5 @@
 name: "YouTube para Telegram"
-version: "1.0.2"
+version: "1.0.3"
 slug: "youtube_telegram"
 description: >-
   Recebe links do YouTube pelo Telegram, baixa o vídeo ou o áudio e devolve no

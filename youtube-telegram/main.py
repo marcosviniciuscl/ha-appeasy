@@ -21,7 +21,7 @@ from pathlib import Path
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.error import RetryAfter
+from telegram.error import BadRequest, RetryAfter
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -53,6 +53,15 @@ async def editar(mensagem, texto: str, **extra) -> None:
         await asyncio.sleep(float(e.retry_after))
     except Exception as e:  # noqa: BLE001
         LOG.debug("Falha ao editar a mensagem: %s", e)
+
+
+async def tratar_erro(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Evita tracebacks feios para erros esperados do Telegram."""
+    erro = context.error
+    if isinstance(erro, BadRequest):
+        LOG.warning("Requisição recusada pelo Telegram: %s", erro)
+        return
+    LOG.error("Erro não tratado ao processar update: %s", erro, exc_info=erro)
 
 
 async def rodar_com_progresso(mensagem, estado: dict, titulo_html: str, rotulo: str,
@@ -355,9 +364,10 @@ async def botao_apagar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await consulta.answer("Só quem pediu o download pode apagar.", show_alert=True)
         return
 
+    # Responde já: o delete no MinIO pode demorar e a query expira (~15 s).
+    await consulta.answer("🗑 Apagando do MinIO…")
     apagar.pop(partes[1], None)
     await asyncio.to_thread(store.apagar, info["objeto"])
-    await consulta.answer("🗑 Arquivo apagado do MinIO.")
     try:
         await consulta.message.edit_reply_markup(None)
     except Exception:  # noqa: BLE001
@@ -483,6 +493,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(botao_youtube, pattern=r"^yt\|"))
     app.add_handler(CallbackQueryHandler(botao_apagar, pattern=r"^del\|"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, receber))
+    app.add_error_handler(tratar_erro)
 
     LOG.info("Bot no ar. Ctrl+C para encerrar.")
     app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)

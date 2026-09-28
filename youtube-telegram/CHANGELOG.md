@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Corrige o erro `Query is too old` no botão **Apagar agora**: o callback agora é
+  respondido antes do delete bloqueante no MinIO.
+- Adiciona timeouts de conexão/leitura no cliente do MinIO (evita travas longas).
+- Registra um handler de erros (sem tracebacks para erros esperados do Telegram).
+
 ## 1.0.2
 
 - O áudio do YouTube agora é sempre salvo em **MP3** (duas opções: bitrate

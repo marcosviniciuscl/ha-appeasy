@@ -35,6 +35,8 @@ class MinioStore:
                 signature_version="s3v4",
                 s3={"addressing_style": "path"},
                 retries={"max_attempts": 3, "mode": "standard"},
+                connect_timeout=10,
+                read_timeout=120,
             ),
         )
 
