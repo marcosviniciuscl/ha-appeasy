@@ -119,6 +119,22 @@
   <!-- ============================ ÔNIBUS ============================ -->
   <section id="s-onibus">
     <div class="card">
+      <h2>Cidade</h2>
+      <label class="f">Sistema SIUMobile</label>
+      <select id="cid-sel"></select>
+      <details id="cid-custom" style="margin-top:8px">
+        <summary class="f" style="cursor:pointer">Outra cidade (URL/praça/pacote)</summary>
+        <label class="f">URL base da API</label>
+        <input id="cid-base" placeholder="http://minha-cidade.siumobile.com.br:6060/.../rest/ws">
+        <label class="f">Praça (cidade)</label>
+        <input id="cid-praca" placeholder="BHZ">
+        <label class="f">Pacote do app</label>
+        <input id="cid-pacote" placeholder="com.tacom.siumobilebh">
+      </details>
+      <div class="row"><button class="bt" onclick="salvarCidade()">Aplicar cidade</button></div>
+      <div class="aviso" id="cid-msg"></div>
+    </div>
+    <div class="card">
       <h2>O que exibir no mapa<span class="tag" id="tag-obs"></span></h2>
       <label class="f">Linhas</label>
       <div class="chips" id="chips-linhas"></div>
@@ -256,7 +272,7 @@ async function carregarEstado(){
   const nomeCidade = (est.cidade && est.cidade.nome) ? est.cidade.nome + " · " : "";
   document.getElementById("hdr-sub").textContent =
     nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
-  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects();
+  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects(); renderCidade();
   const st = est.status||{};
   document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
   document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
@@ -289,6 +305,35 @@ function preencherSelects(){
   const atualE = peE.value;
   peE.innerHTML = '<option value="">— sem localização —</option>' + opc.join("");
   peE.value = atualE;
+}
+
+/* ------------------------------------------------ cidade */
+function renderCidade(){
+  const sel = document.getElementById("cid-sel");
+  if (!sel) return;
+  const cidades = est.cidades || {};
+  const atual = (est.cidade && est.cidade.chave) || "";
+  sel.innerHTML = Object.keys(cidades).map(k=>
+      `<option value="${esc(k)}"${k===atual?" selected":""}>${esc(cidades[k])}</option>`).join("")
+    + `<option value="custom"${atual==="custom"?" selected":""}>Outra cidade…</option>`;
+  const c = est.cidade || {};
+  document.getElementById("cid-base").value = (atual==="custom" ? (c.base||"") : "");
+  document.getElementById("cid-praca").value = (atual==="custom" ? (c.praca||"") : "");
+  document.getElementById("cid-pacote").value = (atual==="custom" ? (c.pacote||"") : "");
+}
+async function salvarCidade(){
+  const chave = document.getElementById("cid-sel").value;
+  const corpo = {cidade: chave};
+  if (chave === "custom") {
+    corpo.api_base = document.getElementById("cid-base").value.trim();
+    corpo.api_praca = document.getElementById("cid-praca").value.trim();
+    corpo.app_package = document.getElementById("cid-pacote").value.trim();
+  }
+  const r = await api("/api/cidade", corpo);
+  if (r.ok){
+    msg("cid-msg", "Cidade aplicada: " + ((r.cidade && r.cidade.nome) || ""));
+    await carregarEstado(); carregarMapa(); carregarOnibus();
+  } else msg("cid-msg", r.erro||"erro ao aplicar a cidade", false);
 }
 
 /* ------------------------------------------------ mapa */

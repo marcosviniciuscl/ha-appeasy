@@ -22,6 +22,7 @@ def _padroes():
             "atualizacao_rastreio_s": 90, # cadência do Live Activity
             "simulacao": False,           # true = não envia nada, só registra no log
         },
+        "cidade": {},
         "pessoas": [],
         "regras": [],
         "mapa": {"onibus": [], "pessoas": [], "rotas": True, "pontos": True},

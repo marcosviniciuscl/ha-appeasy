@@ -233,6 +233,22 @@ class Handler(BaseHTTPRequestHandler):
             motor.registrar("Ajustes atualizados")
             return self._json({"ok": True, "ajustes": cfg["ajustes"]})
 
+        if caminho == "/api/cidade":
+            cidade = str(corpo.get("cidade") or "").strip()
+            base = str(corpo.get("api_base") or "").strip()
+            praca = str(corpo.get("api_praca") or "").strip()
+            pacote = str(corpo.get("app_package") or "").strip()
+            if not cidade and not base:
+                return self._erro("informe a cidade")
+            api.configurar(cidade=cidade or None, base=base or None,
+                           praca=praca or None, pacote=pacote or None)
+            atual = api.cidade_atual()
+            cfg["cidade"] = atual
+            motor.salvar(cfg)
+            motor.reiniciar()
+            motor.registrar(f"Cidade alterada para {atual['nome']}")
+            return self._json({"ok": True, "cidade": atual})
+
         if caminho == "/api/mapa":
             mapa = cfg.setdefault("mapa", {})
             for chave in ("onibus", "pessoas"):

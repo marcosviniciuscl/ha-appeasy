@@ -19,7 +19,9 @@ qualquer outra cidade que use o mesmo sistema por configuração manual.
 
 ## Cidades
 
-Escolha a cidade na opção **`cidade`** das configurações do App.
+Você pode escolher a cidade **dentro do painel**, na aba **Ônibus → Cidade**.
+A lista de linhas (e tudo o mais) passa a usar a cidade escolhida, e a seleção
+fica salva. As opções do App abaixo servem apenas como valor inicial.
 
 | Cidade | Valor de `cidade` |
 | --- | --- |
@@ -28,7 +30,8 @@ Escolha a cidade na opção **`cidade`** das configurações do App.
 
 ### Outra cidade (SIUMobile)
 
-Se a sua cidade usa o SIUMobile mas não está na lista, preencha manualmente:
+No painel, escolha **Outra cidade…** e preencha URL base, praça e pacote. As
+opções abaixo do App fazem o mesmo (e valem como valor inicial):
 
 | Opção | Para que serve |
 | --- | --- |

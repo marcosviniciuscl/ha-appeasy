@@ -197,6 +197,23 @@ class Motor:
                 return [c for c, _ in dados["its"]]
         return its
 
+    def reiniciar(self):
+        """Limpa o estado ao trocar de cidade/linhas e dispara uma nova leitura."""
+        with self.lock:
+            antigos = list(self.onibus)
+            self.onibus.clear()
+            self.avisos.clear()
+            self.alvos.clear()
+            self.itinerarios.clear()
+            self.ultimo_ciclo = 0.0
+            self.erro_ciclo = ""
+        for vid in antigos:
+            try:
+                ha.remover_estado(f"device_tracker.bustracker_{vid}")
+            except Exception:
+                pass
+        threading.Thread(target=self.ciclo, daemon=True, name="ciclo-reinicio").start()
+
     # ------------------------------------------------------------ publicar HA
     def publicar_ha(self):
         """Espelha cada ônibus como device_tracker (compatível com o que já existia)."""
@@ -545,6 +562,10 @@ class Motor:
             msg,
             {
                 "tag": f"onibus_aviso_{pessoa['id']}",
+                "group": f"onibus_{pessoa['id']}",
+                "channel": "Bus Tracker",
+                "color": "#FFB300",
+                "notification_icon": "mdi:bus",
                 "interruption_level": "time-sensitive",
                 "actions": [
                     {"action": acao, "title": "📡 Rastrear"},
@@ -569,14 +590,20 @@ class Motor:
             msg,
             {
                 "tag": f"onibus_rastreio_{pessoa['id']}",
+                "group": f"onibus_{pessoa['id']}",
+                "channel": "Bus Tracker",
                 "live_update": True,
-                "silent": not primeiro,
+                "silent": not primeiro,        # iOS: atualização silenciosa
+                "alert_once": not primeiro,    # Android: alerta só uma vez
+                "sticky": True,                # Android: mantém ao tocar
                 "critical_text": _fmt_dist(d),
                 "progress": pct,
                 "progress_max": 100,
                 "notification_icon": "mdi:bus",
-                "notification_icon_color": "#FFB300",
-                "progress_bar_color": "#FFB300",
+                "notification_icon_color": "#FFB300",  # iOS
+                "progress_bar_color": "#FFB300",        # iOS
+                "color": "#FFB300",                      # Android
+                "actions": [{"action": f"PARAR|{pessoa['id']}", "title": "Parar rastreio"}],
             },
         )
 
@@ -587,7 +614,15 @@ class Motor:
             pessoa,
             "🚌 Ônibus chegando!",
             f"Linha {bus['linha']} {onde}",
-            {"tag": f"onibus_chegou_{pessoa['id']}", "interruption_level": "time-sensitive"},
+            {
+                "tag": f"onibus_chegou_{pessoa['id']}",
+                "group": f"onibus_{pessoa['id']}",
+                "channel": "Bus Tracker",
+                "color": "#4CAF50",
+                "notification_icon": "mdi:bus",
+                "interruption_level": "time-sensitive",
+                "actions": [{"action": f"PARAR|{pessoa['id']}", "title": "Encerrar rastreio"}],
+            },
         )
 
     def limpar(self, pessoa, *tags):
@@ -626,8 +661,15 @@ class Motor:
                 pessoa,
                 f"📡 Rastreando a linha {sigla}",
                 "Vou atualizar na sua tela de bloqueio.",
-                {"tag": f"onibus_parar_{pessoa['id']}",
-                 "actions": [{"action": f"PARAR|{pessoa_id}", "title": "Parar rastreio"}]},
+                {
+                    "tag": f"onibus_parar_{pessoa['id']}",
+                    "group": f"onibus_{pessoa['id']}",
+                    "channel": "Bus Tracker",
+                    "color": "#FFB300",
+                    "notification_icon": "mdi:bus",
+                    "sticky": True,
+                    "actions": [{"action": f"PARAR|{pessoa_id}", "title": "Parar rastreio"}],
+                },
             )
         return True
 

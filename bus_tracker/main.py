@@ -72,12 +72,18 @@ def main():
     cfg = store.carregar()
     opcoes = opcoes_app()
 
-    api.configurar(
-        cidade=opcoes.get("cidade") or None,
-        base=opcoes.get("api_base") or None,
-        praca=opcoes.get("api_praca") or None,
-        pacote=opcoes.get("app_package") or None,
-    )
+    salva = cfg.get("cidade") if isinstance(cfg.get("cidade"), dict) else None
+    if salva and salva.get("chave"):
+        # Escolha feita no painel tem prioridade sobre as opções do App.
+        api.configurar(cidade=salva["chave"], base=salva.get("base"),
+                       praca=salva.get("praca"), pacote=salva.get("pacote"))
+    else:
+        api.configurar(
+            cidade=opcoes.get("cidade") or None,
+            base=opcoes.get("api_base") or None,
+            praca=opcoes.get("api_praca") or None,
+            pacote=opcoes.get("app_package") or None,
+        )
     cidade = api.cidade_atual()
     if not cfg["ajustes"].get("fuso"):
         cfg["ajustes"]["fuso"] = api.fuso_da_cidade() or "America/Sao_Paulo"

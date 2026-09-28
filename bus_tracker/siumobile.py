@@ -58,6 +58,7 @@ _estado = {
     "base": CIDADES[CIDADE_PADRAO]["base"],
     "praca": CIDADES[CIDADE_PADRAO]["praca"],
     "pacote": CIDADES[CIDADE_PADRAO]["pacote"],
+    "centro": CIDADES[CIDADE_PADRAO]["centro"],
 }
 _lock = threading.Lock()
 
@@ -72,14 +73,23 @@ def cidades():
 
 
 def configurar(cidade=None, base=None, praca=None, pacote=None):
-    """Define a cidade (e overrides) usada nas próximas requisições."""
+    """Define a cidade (e overrides) usada nas próximas requisições.
+
+    `cidade` pode ser uma chave de CIDADES ou `"custom"` (nesse caso informe
+    `base`/`praca`/`pacote`).
+    """
     with _lock:
-        info = CIDADES.get(cidade or "")
-        if info:
-            _estado.update(cidade=cidade, base=info["base"], praca=info["praca"],
-                           pacote=info["pacote"])
+        if cidade:
+            info = CIDADES.get(cidade)
+            if info:
+                _estado.update(cidade=cidade, base=info["base"], praca=info["praca"],
+                               pacote=info["pacote"], centro=info.get("centro"))
+            else:
+                _estado.update(cidade="custom", centro=None)
         if base:
             _estado["base"] = base.strip().rstrip("/")
+            if _estado["cidade"] not in CIDADES:
+                _estado["cidade"] = "custom"
         if praca is not None and str(praca).strip():
             _estado["praca"] = str(praca).strip()
         if pacote:
@@ -93,13 +103,15 @@ def configurar(cidade=None, base=None, praca=None, pacote=None):
 
 def cidade_atual():
     info = CIDADES.get(_estado["cidade"], {})
+    praca = _estado["praca"]
+    nome = info.get("nome") or (praca if praca not in ("", "null") else "Personalizada")
     return {
         "chave": _estado["cidade"],
-        "nome": info.get("nome") or _estado["praca"],
+        "nome": nome,
         "base": _estado["base"],
         "praca": _estado["praca"],
         "pacote": _estado["pacote"],
-        "centro": info.get("centro"),
+        "centro": info.get("centro") or _estado.get("centro"),
     }
 
 

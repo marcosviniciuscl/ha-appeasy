@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.24.4
+
+- Agora dá para **escolher a cidade pelo painel**; a lista de linhas passa a
+  refletir a cidade selecionada (e a escolha fica salva).
+- Notificações de aviso e de rastreio ao vivo ajustadas para funcionar tanto no
+  **Android** quanto no **iPhone** (Live Activity/Live Update e botões de ação).
+- Versão renumerada para abaixo de 1.
+
 ## 3.0.3
 
 - Remove arquiteturas obsoletas (`armv7`, `armhf`, `i386`): agora só `aarch64` e
