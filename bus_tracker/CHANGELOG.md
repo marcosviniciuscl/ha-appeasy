@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.38.0
+
+- **Ponto de embarque fixo**: a parada não muda mais conforme o ônibus anda
+  (antes o ponto "pulava" para a parada à frente do veículo). Agora ele é
+  calculado só pela **sua localização + destino** e permanece o mesmo.
+- **Destaque é o próximo ônibus** a passar nesse ponto (menor ETA), não mais o
+  ponto recalculado na frente do ônibus.
+- Destaque mais visível: anel **azul pulsante**, rótulo azul e o ônibus
+  destacado fica **por cima** dos demais.
+- Se um trajeto está no horário e **não há** ônibus indo ao ponto, isso aparece
+  no log de **Atividade** (com o modo diagnóstico detalhado).
+
 ## 0.37.0
 
 - **Ponto de embarque no sentido do destino**: agora só entram paradas de
