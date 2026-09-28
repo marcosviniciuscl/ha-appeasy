@@ -51,6 +51,7 @@ def laco_poll(motor, intervalo_fn):
             motor.ciclo()
             motor.publicar_ha()
             motor.avaliar_avisos()
+            motor.avaliar_trajetos()
         except Exception as e:
             log.exception(f"erro no ciclo: {e}")
             motor.registrar(f"erro no ciclo: {e}", "error")

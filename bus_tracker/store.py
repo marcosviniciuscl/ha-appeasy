@@ -21,10 +21,15 @@ def _padroes():
             "intervalo_segundos": 30,
             "atualizacao_rastreio_s": 90, # cadência do Live Activity
             "simulacao": False,           # true = não envia nada, só registra no log
+            "velocidade_caminhada_kmh": 4.5,  # velocidade média a pé
+            "fator_rota": 1.3,                # ruas ≈ 30% mais que a linha reta
+            "margem_embarque_min": 2,         # chegar com essa folga no ponto
+            "janela_saida_min": 30,           # avalia trajetos nessa janela antes do horário
         },
         "cidade": {},
         "pessoas": [],
         "regras": [],
+        "trajetos": [],
         "mapa": {"onibus": [], "pessoas": [], "rotas": True, "pontos": True},
         "historico": [],
     }

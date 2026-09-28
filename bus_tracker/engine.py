@@ -39,6 +39,15 @@ def _num(v):
         return None
 
 
+def _hhmm(valor):
+    """'06:30' -> minutos desde a meia-noite, ou None."""
+    try:
+        h, m = str(valor).strip().split(":")
+        return int(h) * 60 + int(m)
+    except (TypeError, ValueError):
+        return None
+
+
 class Motor:
     def __init__(self, cfg, salvar_cb, linhas_extras=None):
         self.cfg = cfg
@@ -54,6 +63,7 @@ class Motor:
         self.ultimo_ciclo = 0.0
         self.erro_ciclo = ""
         self.pausado = False
+        self.trajeto_ts = {}      # trajeto_id -> ts do último push de tempo real
 
     # ------------------------------------------------------------------ log
     def registrar(self, msg, nivel="info"):
@@ -559,6 +569,71 @@ class Motor:
         saida.sort(key=lambda x: x["dist_ponto"])
         return saida
 
+    # ------------------------------------------------------------- trajetos
+    def _tempo_pe_min(self, dist_m):
+        """Tempo aproximado a pé (min) para uma distância em metros."""
+        vel = float(self.cfg["ajustes"].get("velocidade_caminhada_kmh", 4.5)) or 4.5
+        return (dist_m / 1000.0) / vel * 60.0
+
+    def _ponto_trajeto(self, pessoa, sigla):
+        """Ponto onde a pessoa pega a linha + distância/tempo a pé até lá."""
+        alvo = self.alvo(pessoa, sigla)
+        if not alvo or not alvo.get("pos"):
+            return None
+        parada = alvo.get("parada")
+        if parada:
+            destino, nome = (parada["lat"], parada["lon"]), parada["nome"]
+        else:
+            melhor = None
+            for rota in self._rotas_da_linha(sigla):
+                s, off = rota.projetar(alvo["pos"])
+                if melhor is None or off < melhor[1]:
+                    melhor = (s, off, rota)
+            if not melhor or melhor[1] > 3000:
+                return None
+            destino, nome = melhor[2].ponto_em(melhor[0]), "onde o ônibus passa"
+        fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
+        dist = geo.haversine(alvo["pos"], destino) * fator
+        return {"nome": nome, "lat": destino[0], "lon": destino[1],
+                "dist_m": round(dist), "tempo_min": round(self._tempo_pe_min(dist), 1),
+                "alvo": alvo}
+
+    def _risco(self, t_pessoa, t_bus, margem):
+        if t_bus is None:
+            return "sem-previsao"
+        if t_bus + 0.001 < t_pessoa:
+            return "perdeu"
+        if t_bus - t_pessoa < margem:
+            return "correr"
+        return "ok"
+
+    def calcular_trajeto(self, t):
+        """Calcula ponto, caminhada, ônibus e risco de perder para um trajeto."""
+        pessoa = next((p for p in self.cfg.get("pessoas", []) if p["id"] == t.get("pessoa")), None)
+        if not pessoa or not pessoa.get("ativo", True):
+            return None
+        ponto = self._ponto_trajeto(pessoa, t.get("linha"))
+        if not ponto:
+            return None
+        margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
+        onibus = []
+        for b in self.candidatos(t.get("linha"), ponto["alvo"], 10 ** 7)[:3]:
+            eta = b.get("eta_min")
+            risco = self._risco(ponto["tempo_min"], eta, margem)
+            onibus.append({
+                "id": b["id"], "eta_min": eta, "dist_m": round(b.get("dist_ponto") or 0),
+                "risco": risco,
+                "tempo_total_min": eta if (eta is not None and risco != "perdeu") else None,
+            })
+        return {
+            "id": t.get("id"), "pessoa": pessoa["nome"], "pessoa_id": pessoa["id"],
+            "linha": self.sigla_exib(t.get("linha")), "sentido": t.get("sentido") or "ida",
+            "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
+            "pos": {"lat": ponto["alvo"]["pos"][0], "lon": ponto["alvo"]["pos"][1]},
+            "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
+            "onibus": onibus,
+        }
+
     def avaliar_avisos(self):
         """Decide se algun ônibus está chegando e dispara o aviso."""
         agora = datetime.now(_tz(self.cfg["ajustes"]["fuso"]))
@@ -606,6 +681,55 @@ class Motor:
             for chave, ts in list(self.avisos.items()):
                 if time.time() - ts > 6 * 3600:
                     self.avisos.pop(chave, None)
+
+    def _proximo_horario(self, trajeto, agora):
+        """Próximo horário do trajeto (datetime, minutos restantes) ou None."""
+        try:
+            if agora.weekday() not in [int(d) for d in (trajeto.get("dias") or list(range(7)))]:
+                return None
+        except (TypeError, ValueError):
+            pass
+        melhor = None
+        for h in trajeto.get("horarios") or []:
+            m = _hhmm(h)
+            if m is None:
+                continue
+            dt = agora.replace(hour=m // 60, minute=m % 60, second=0, microsecond=0)
+            diff = (dt - agora).total_seconds() / 60.0
+            if diff >= -5 and (melhor is None or diff < melhor[1]):
+                melhor = (dt, diff)
+        return melhor
+
+    def avaliar_trajetos(self):
+        """Avisa para sair a tempo e mantém o tempo real (ônibus x caminhada)."""
+        agora = datetime.now(_tz(self.cfg["ajustes"]["fuso"]))
+        janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
+        cooldown = float(self.cfg["ajustes"].get("cooldown_min", 45)) * 60
+        cadencia = float(self.cfg["ajustes"].get("atualizacao_rastreio_s", 90))
+        for t in self.cfg.get("trajetos", []):
+            if not t.get("ativo", True):
+                continue
+            prox = self._proximo_horario(t, agora)
+            if not prox or prox[1] > janela:
+                continue
+            try:
+                info = self.calcular_trajeto(t)
+            except Exception as e:
+                log.debug(f"trajeto {t.get('id')}: {e}")
+                continue
+            if not info or not info.get("onibus"):
+                continue
+            b = info["onibus"][0]
+            if b.get("risco") in ("correr", "perdeu"):
+                chave = (t.get("id"), b["id"], "saida")
+                if time.time() - self.avisos.get(chave, 0) >= cooldown:
+                    self.avisos[chave] = time.time()
+                    self.enviar_saida(info, b)
+            # tempo real (com cadência para não estourar o iOS)
+            tid = t.get("id")
+            if time.time() - self.trajeto_ts.get(tid, 0) >= cadencia:
+                self.trajeto_ts[tid] = time.time()
+                self.push_trajeto(info, b)
 
     # ------------------------------------------------------------ notificações
     def _notificar(self, pessoa, titulo, mensagem, extra=None, simulacao_tag=None):
@@ -663,6 +787,62 @@ class Motor:
         )
         if ok:
             self.registrar(f"Aviso enviado a {pessoa['nome']}: {bus['linha']} · {msg}")
+
+    def _pessoa(self, pessoa_id):
+        return next((p for p in self.cfg.get("pessoas", []) if p["id"] == pessoa_id), None)
+
+    def enviar_saida(self, info, bus):
+        """Avisa para sair de casa e ir ao ponto."""
+        pessoa = self._pessoa(info["pessoa_id"])
+        if not pessoa:
+            return
+        eta = bus.get("eta_min")
+        caminhada = info["ponto"]["tempo_min"]
+        if bus.get("risco") == "perdeu":
+            titulo = f"Pode perder a linha {info['linha']}"
+            msg = (f"Ônibus em ~{eta:.0f} min e você a ~{caminhada:.0f} min a pé. "
+                   "Corra ou pegue o próximo.")
+        else:
+            titulo = f"Sai agora para pegar a linha {info['linha']}"
+            msg = (f"Ônibus em ~{eta:.0f} min · ~{caminhada:.0f} min a pé "
+                   f"até {info['ponto']['nome']}.")
+        self._notificar(pessoa, titulo, msg, {
+            "tag": f"trajeto_saida_{info['pessoa_id']}",
+            "group": f"trajeto_{info['pessoa_id']}",
+            "channel": "Bus Tracker",
+            "color": "#3d7dff",
+            "notification_icon": "mdi:walk",
+            "interruption_level": "time-sensitive",
+            "actions": [
+                {"action": f"RASTREAR|{info['pessoa_id']}|{info['linha']}|{bus['id']}", "title": "📡 Rastrear"},
+                {"action": f"RECUSAR|{info['pessoa_id']}|{info['linha']}|{bus['id']}", "title": "Agora não"},
+            ],
+        })
+        self.registrar(f"Saída sugerida a {info['pessoa']}: linha {info['linha']} · {msg}")
+
+    def push_trajeto(self, info, bus):
+        """Tempo real: ônibus x caminhada e risco de perder."""
+        pessoa = self._pessoa(info["pessoa_id"])
+        if not pessoa:
+            return
+        eta = bus.get("eta_min")
+        caminhada = info["ponto"]["tempo_min"]
+        risco = {"ok": "dá tempo", "correr": "corra!", "perdeu": "pode perder",
+                 "sem-previsao": "sem previsão"}.get(bus.get("risco"), "")
+        msg = f"Ônibus {info['linha']} em ~{eta:.0f} min · você {caminhada:.0f} min a pé · {risco}"
+        self._notificar(pessoa, f"Linha {info['linha']} · {info['ponto']['nome']}", msg, {
+            "tag": f"trajeto_{info['pessoa_id']}",
+            "group": f"trajeto_{info['pessoa_id']}",
+            "channel": "Bus Tracker",
+            "color": "#3d7dff",
+            "notification_icon": "mdi:bus-clock",
+            "live_update": True,
+            "alert_once": True,
+            "silent": True,
+            "critical_text": f"você {caminhada:.0f} min",
+            "actions": [{"action": f"RASTREAR|{info['pessoa_id']}|{info['linha']}|{bus['id']}",
+                         "title": "📡 Rastrear"}],
+        })
 
     def push_rastreio(self, pessoa, rastreio, bus, alvo, eta, d, primeiro=False):
         pct = 0
@@ -886,14 +1066,24 @@ class Motor:
                 })
             rastreios = [dict(r) for r in self.rastreios.values()]
         lugares = {}
-        mapa = self.cfg.get("mapa", {})
-        for pid in mapa.get("pessoas", []):
-            pessoa = pessoas_cfg.get(pid)
-            if not pessoa:
+        # todas as pessoas cadastradas (e ativas) que tenham GPS no HA
+        for pid, pessoa in pessoas_cfg.items():
+            if not pessoa.get("ativo", True):
                 continue
             pos = self.posicao(pessoa.get("entidade"))
             if pos:
                 lugares[pid] = {"nome": pessoa["nome"], "lat": pos[0], "lon": pos[1]}
+        mapa = self.cfg.get("mapa", {})
+        trajetos = []
+        for t in self.cfg.get("trajetos", []):
+            if not t.get("ativo", True):
+                continue
+            try:
+                info = self.calcular_trajeto(t)
+            except Exception:
+                info = None
+            if info:
+                trajetos.append(info)
         pontos = []
         for (pid, sigla), alvo in list(self.alvos.items()):
             if not alvo.get("pos"):
@@ -927,6 +1117,7 @@ class Motor:
             "onibus": sorted(onibus, key=lambda x: (x["linha"], x["id"])),
             "lugares": list(lugares.values()),
             "pontos": pontos,
+            "trajetos": trajetos,
             "rotas": self.rotas_render() if (com_rotas and mapa.get("rotas")) else {},
             "rastreios": rastreios,
             "log": list(self.log)[:60],

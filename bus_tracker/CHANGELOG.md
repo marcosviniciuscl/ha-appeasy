@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.28.0
+
+- **Trajetos**: nova aba para cadastrar quais ônibus cada pessoa pega e os
+  horários (ida/volta), com vários horários por trajeto e por pessoa.
+- **Mapa** mostra onde estão as pessoas cadastradas, a distância até o ponto, o
+  **tempo a pé** e a linha de caminhada até a parada, o ETA do ônibus e o
+  **tempo total** para conseguir pegá-lo.
+- **Risco de perder o ônibus** calculado em tempo real (dá tempo / corra / pode
+  perder), com notificação para **sair de casa a tempo** e atualização ao vivo.
+- Ajustes novos: velocidade a pé, fator de rota, margem de embarque e janela de
+  aviso de saída.
+
 ## 0.27.0
 
 - **Desktop**: o mapa também ocupa a tela toda e as opções abrem num painel

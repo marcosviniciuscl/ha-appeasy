@@ -15,9 +15,29 @@ qualquer outra cidade que use o mesmo sistema por configuração manual.
    o tempo estimado até cada uma, além do sentido, destino e acessibilidade.
 2. Em **Ônibus**, escolha quais linhas e pessoas aparecem no mapa.
 3. Em **Pessoas**, cadastre quem recebe avisos (celular + localização do HA).
-4. Em **Avisos**, crie regras (linha, dias, horário) para receber notificação
+4. Em **Trajetos**, cadastre os ônibus que cada pessoa pega e os horários.
+5. Em **Avisos**, crie regras (linha, dias, horário) para receber notificação
    quando o ônibus estiver chegando.
-5. Em **Ajustes**, calibre distância, tempo entre avisos e o fuso horário.
+6. Em **Ajustes**, calibre distância, velocidade a pé, tempo entre avisos e fuso.
+
+## Trajetos e caminhada
+
+Na aba **Trajetos** você cadastra **quais ônibus cada pessoa pega** e em **quais
+horários**, com sentido **ida** (saindo de casa) ou **volta** (para casa). É
+possível ter **vários trajetos** por pessoa e **vários horários** por trajeto.
+
+Com isso o App calcula e mostra:
+
+- o **ponto de embarque** mais próximo da pessoa e a **distância** até ele;
+- o **tempo a pé** (velocidade e fator de rota configuráveis em **Ajustes**) e a
+  **linha da caminhada** no mapa;
+- o **ETA do ônibus** no ponto e o **tempo total** para conseguir pegá-lo;
+- o **risco** de perder o ônibus: *dá tempo*, *corra* ou *pode perder*.
+
+Perto do horário configurado, o App envia uma notificação para **sair a tempo**
+e, depois, **atualizações em tempo real** com o tempo do ônibus, o seu tempo a
+pé e o risco. Os cálculos usam a posição real dos ônibus (SIUMobile) e a sua
+localização no Home Assistant.
 
 ## Cidades
 

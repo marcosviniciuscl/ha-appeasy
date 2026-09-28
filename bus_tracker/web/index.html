@@ -184,6 +184,8 @@
   <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></symbol>
   <symbol id="ic-marker" viewBox="0 0 24 24"><path d="M12,2C8.13,2 5,5.13 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9C19,5.13 15.87,2 12,2M12,11.5A2.5,2.5 0 1,1 12,6.5A2.5,2.5 0 0,1 12,11.5Z"/></symbol>
   <symbol id="ic-close" viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></symbol>
+  <symbol id="ic-walk" viewBox="0 0 24 24"><path d="M14.12,10H19V8.2H15.38L13.38,4.87C13.08,4.37 12.54,4.03 11.92,4.03C11.74,4.03 11.58,4.06 11.42,4.11L6,5.8V11H7.8V7.33L9.91,6.67L6,22H7.8L10.67,13.89L13,17V22H14.8V15.59L12.31,11.05L13.04,8.18M12,4.5A2,2 0 0,0 14,2.5A2,2 0 0,0 12,0.5A2,2 0 0,0 10,2.5A2,2 0 0,0 12,4.5Z"/></symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24"><path d="M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></symbol>
 </svg>
 
 <header>
@@ -203,6 +205,7 @@
 <aside class="rail glass">
   <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
   <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
+  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg>Trajetos</button>
   <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
   <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
   <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
@@ -218,9 +221,16 @@
   <div class="map-controls">
     <button class="fab glass" onclick="carregarMapa(true)" title="Atualizar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-refresh"/></svg></button>
     <button class="fab glass" onclick="mostrarTudo()" title="Mostrar tudo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-eye"/></svg></button>
+    <button class="fab glass" onclick="toggleTrajetos()" title="Trajetos e caminhada"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg></button>
     <button class="fab glass" onclick="togglePontos()" title="Pontos de embarque"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-marker"/></svg></button>
   </div>
   <aside class="detail glass" id="rota-info" style="display:none"></aside>
+  <aside class="detail glass" id="trajetos-sheet" style="display:none">
+    <h2>Trajetos
+      <button class="btn-x" style="margin-left:auto" onclick="toggleTrajetos()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
+    </h2>
+    <div id="lista-trajetos-mapa"></div>
+  </aside>
   <aside class="detail glass" id="pontos-sheet" style="display:none">
     <h2>Pontos de embarque
       <button class="btn-x" style="margin-left:auto" onclick="togglePontos()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
@@ -259,6 +269,42 @@
     <div class="card">
       <h2>Ônibus ao vivo<span class="tag" id="tag-qtd"></span></h2>
       <div id="lista-onibus"></div>
+    </div>
+  </section>
+
+  <!-- ============================ TRAJETOS ============================ -->
+  <section id="s-trajetos">
+    <div class="card">
+      <h2 id="tr-titulo">Novo trajeto</h2>
+      <p class="meta" style="margin:0 0 6px">Cadastre o ônibus que a pessoa pega e os horários. O app calcula o tempo a pé até o ponto e avisa quando sair.</p>
+      <div class="grid2">
+        <div><label class="f">Pessoa</label><select id="tr-pessoa"></select></div>
+        <div><label class="f">Sentido</label>
+          <select id="tr-sentido">
+            <option value="ida">Ida (saindo de casa)</option>
+            <option value="volta">Volta (para casa)</option>
+          </select>
+        </div>
+      </div>
+      <label class="f">Linha (ônibus)</label>
+      <select id="tr-linha"></select>
+      <label class="f">Horários do ônibus (separe por vírgula)</label>
+      <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
+      <label class="f">Dias da semana</label>
+      <div class="chips" id="tr-dias"></div>
+      <div class="row">
+        <label class="chip" id="tr-ativo-wrap"><input type="checkbox" id="tr-ativo" checked> Ativo</label>
+      </div>
+      <div class="row">
+        <button class="bt" onclick="salvarTrajeto()">Salvar trajeto</button>
+        <button class="bt sec" onclick="novoTrajeto()">Limpar</button>
+        <button class="bt sec" onclick="testarTrajeto()">Testar aviso</button>
+      </div>
+      <div class="aviso" id="tr-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Trajetos cadastrados</h2>
+      <div id="lista-trajetos-cad"></div>
     </div>
   </section>
 
@@ -325,6 +371,10 @@
         <div><label class="f">Leitura da API a cada (s)</label><input type="number" id="aj-intervalo" step="5"></div>
         <div><label class="f">Atualizar rastreio a cada (s)</label><input type="number" id="aj-rastreio" step="10"></div>
         <div><label class="f">Fuso horário</label><input id="aj-fuso"></div>
+        <div><label class="f">Velocidade a pé (km/h)</label><input type="number" id="aj-caminhada" step="0.1"></div>
+        <div><label class="f">Fator de rota (ruas)</label><input type="number" id="aj-fator" step="0.1"></div>
+        <div><label class="f">Margem de embarque (min)</label><input type="number" id="aj-margem" step="1"></div>
+        <div><label class="f">Avisar saída até (min antes)</label><input type="number" id="aj-janela" step="5"></div>
       </div>
       <div class="row">
         <label class="chip" id="aj-sim-wrap"><input type="checkbox" id="aj-sim"> Modo simulação (não envia nada)</label>
@@ -346,6 +396,7 @@
 <nav>
   <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
   <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
+  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg>Trajetos</button>
   <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
   <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
   <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
@@ -397,7 +448,8 @@ async function carregarEstado(){
   const nomeCidade = (est.cidade && est.cidade.nome) ? est.cidade.nome + " · " : "";
   document.getElementById("hdr-sub").textContent =
     nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
-  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects(); renderCidade();
+  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects();
+  renderCidade(); renderTrajetos();
   const st = est.status||{};
   document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
   document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
@@ -430,6 +482,18 @@ function preencherSelects(){
   const atualE = peE.value;
   peE.innerHTML = '<option value="">— sem localização —</option>' + opc.join("");
   peE.value = atualE;
+
+  const trP = document.getElementById("tr-pessoa");
+  const atualP = trP.value;
+  trP.innerHTML = '<option value="">— escolha a pessoa —</option>' + (est.pessoas||[]).map(p=>
+    `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join("");
+  trP.value = atualP;
+
+  const trL = document.getElementById("tr-linha");
+  const atualL = trL.value;
+  trL.innerHTML = '<option value="">— escolha a linha —</option>' + (est.linhas||[]).map(l=>
+    `<option value="${esc(l.sigla)}">${esc(l.sigla)} · ${esc(l.nome)}</option>`).join("");
+  trL.value = atualL;
 }
 
 /* ------------------------------------------------ cidade */
@@ -459,6 +523,84 @@ async function salvarCidade(){
     msg("cid-msg", "Cidade aplicada: " + ((r.cidade && r.cidade.nome) || ""));
     await carregarEstado(); carregarMapa(); carregarOnibus();
   } else msg("cid-msg", r.erro||"erro ao aplicar a cidade", false);
+}
+
+/* ------------------------------------------------ trajetos (cadastro) */
+let editandoTrajeto = null;
+function renderDiasTrajeto(sel){
+  const cx = document.getElementById("tr-dias");
+  cx.innerHTML = DIAS.map((d,i)=>`<label class="chip ${sel.includes(i)?"on":""}" data-d="${i}">
+     <input type="checkbox" ${sel.includes(i)?"checked":""}>${d}</label>`).join("");
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{ e.preventDefault(); c.classList.toggle("on"); c.querySelector("input").checked = c.classList.contains("on"); };
+  });
+}
+function renderTrajetos(){
+  const el = document.getElementById("lista-trajetos-cad");
+  if (!el) return;
+  if (!(est.trajetos||[]).length){ el.innerHTML = '<div class="vazio">Nenhum trajeto cadastrado ainda.</div>'; return; }
+  el.innerHTML = est.trajetos.map(t=>{
+    const p = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa;
+    const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
+    return `<div class="item"><div>
+      <div class="nome">${esc(p)} · linha ${esc(t.linha)} (${t.sentido==="volta"?"volta":"ida"})</div>
+      <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
+    </div><div class="dir">
+      <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
+      <button class="bt sec sm" onclick="editarTrajeto('${t.id}')">Editar</button>
+      <button class="bt del" onclick="apagarTrajeto('${t.id}')">Excluir</button>
+    </div></div>`;
+  }).join("");
+}
+function novoTrajeto(){
+  editandoTrajeto = null;
+  document.getElementById("tr-titulo").textContent = "Novo trajeto";
+  document.getElementById("tr-pessoa").value = "";
+  document.getElementById("tr-linha").value = "";
+  document.getElementById("tr-sentido").value = "ida";
+  document.getElementById("tr-horarios").value = "";
+  document.getElementById("tr-ativo").checked = true;
+  renderDiasTrajeto([1,2,3,4,5]);
+}
+function editarTrajeto(id){
+  const t = (est.trajetos||[]).find(x=>x.id===id); if(!t) return;
+  editandoTrajeto = id;
+  document.getElementById("tr-titulo").textContent = "Editando trajeto · linha "+t.linha;
+  document.getElementById("tr-pessoa").value = t.pessoa||"";
+  document.getElementById("tr-linha").value = t.linha||"";
+  document.getElementById("tr-sentido").value = t.sentido||"ida";
+  document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
+  document.getElementById("tr-ativo").checked = !!t.ativo;
+  renderDiasTrajeto(t.dias||[]);
+  trocarAba("trajetos");
+}
+async function salvarTrajeto(){
+  const dias = [...document.querySelectorAll("#tr-dias .chip.on")].map(c=>parseInt(c.dataset.d,10));
+  const horarios = document.getElementById("tr-horarios").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const trajeto = {
+    id: editandoTrajeto,
+    ativo: document.getElementById("tr-ativo").checked,
+    pessoa: document.getElementById("tr-pessoa").value,
+    linha: document.getElementById("tr-linha").value,
+    sentido: document.getElementById("tr-sentido").value,
+    dias, horarios
+  };
+  const r = await api("/api/trajetos", {trajeto});
+  if (r.ok){ msg("tr-msg","Trajeto salvo."); novoTrajeto(); await carregarEstado(); carregarMapa(); }
+  else msg("tr-msg", r.erro||"erro ao salvar", false);
+}
+async function apagarTrajeto(id){
+  if (!confirm("Excluir este trajeto?")) return;
+  await api("/api/trajetos/"+id, {}); await carregarEstado(); carregarMapa();
+}
+async function testarTrajeto(){
+  if (!editandoTrajeto) return msg("tr-msg","Salve o trajeto antes de testar.", false);
+  const r = await api("/api/trajeto_teste", {id: editandoTrajeto, pessoa: document.getElementById("tr-pessoa").value});
+  msg("tr-msg", r.ok ? "Aviso enviado — confira o celular." : (r.erro||"não deu para testar"), r.ok);
+}
+function toggleTrajetos(){
+  const el = document.getElementById("trajetos-sheet");
+  el.style.display = (el.style.display==="block") ? "none" : "block";
 }
 
 /* ------------------------------------------------ mapa */
@@ -526,6 +668,18 @@ async function carregarMapa(primeiro){
     camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:2, fillColor:"#f5a524", fillOpacity:.5})
       .bindPopup(`<b>${esc(p.nome)}</b><br>para ${esc(p.pessoa)} · linha ${esc(p.linha)}<br>${fmtDist(p.dist_pessoa)} da pessoa`));
   });
+  // trajetos: caminhada da pessoa até o ponto + ponto de embarque
+  (d.trajetos||[]).forEach(t=>{
+    const p = t.ponto, pos = t.pos;
+    if (pos && p){
+      camadaOutros.addLayer(L.polyline([[pos.lat,pos.lon],[p.lat,p.lon]],
+        {color:"#37b169", weight:3, opacity:.75, dashArray:"6 7", bubblingMouseEvents:false}));
+    }
+    if (p){
+      camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#37b169", fillOpacity:.55, bubblingMouseEvents:false})
+        .bindPopup(`<b>${esc(t.pessoa)}</b><br>linha ${esc(t.linha)} · ${esc(p.nome)}<br>${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`));
+    }
+  });
   const rotas = d.rotas||{};
   Object.keys(rotas).forEach(sigla=>{
     rotas[sigla].forEach(pts=>{
@@ -540,6 +694,19 @@ async function carregarMapa(primeiro){
     `<div class="item"><div><div class="nome">${esc(p.nome)}</div>
      <div class="meta">linha ${esc(p.linha)} · para ${esc(p.pessoa)} · ${fmtDist(p.dist_pessoa)} da pessoa</div></div></div>`
   ).join("") : '<div class="vazio">Nenhum ponto calculado ainda. Os pontos aparecem quando o app localiza a parada da linha mais próxima de cada pessoa.</div>';
+
+  const trajs = d.trajetos||[];
+  document.getElementById("lista-trajetos-mapa").innerHTML = trajs.length ? trajs.map(t=>{
+    const b = (t.onibus||[])[0];
+    const risco = b ? ({"ok":"dá tempo","correr":"corra!","perdeu":"pode perder","sem-previsao":"sem previsão"}[b.risco]||"") : "";
+    const total = b && b.tempo_total_min!=null ? ` · total ~${Math.round(b.tempo_total_min)} min` : "";
+    return `<div class="item"><div>
+      <div class="nome">${esc(t.pessoa)} · linha ${esc(t.linha)} (${t.sentido==="volta"?"volta":"ida"})</div>
+      <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
+      <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}</div>
+    </div></div>`;
+  }).join("") : '<div class="vazio">Nenhum trajeto ativo para mostrar.</div>';
+
   if (primeiro && exibidos.length===0) mapa.setView(centroMapa(), 13);
   if (onibusSel) desenharRotaSel();
 }
@@ -827,6 +994,10 @@ function renderAjustes(){
   document.getElementById("aj-rastreio").value = a.atualizacao_rastreio_s;
   document.getElementById("aj-fuso").value = a.fuso;
   document.getElementById("aj-sim").checked = !!a.simulacao;
+  document.getElementById("aj-caminhada").value = a.velocidade_caminhada_kmh;
+  document.getElementById("aj-fator").value = a.fator_rota;
+  document.getElementById("aj-margem").value = a.margem_embarque_min;
+  document.getElementById("aj-janela").value = a.janela_saida_min;
 }
 async function salvarAjustes(){
   const r = await api("/api/ajustes", {
@@ -836,6 +1007,10 @@ async function salvarAjustes(){
     intervalo_segundos: +document.getElementById("aj-intervalo").value,
     atualizacao_rastreio_s: +document.getElementById("aj-rastreio").value,
     fuso: document.getElementById("aj-fuso").value,
+    velocidade_caminhada_kmh: +document.getElementById("aj-caminhada").value,
+    fator_rota: +document.getElementById("aj-fator").value,
+    margem_embarque_min: +document.getElementById("aj-margem").value,
+    janela_saida_min: +document.getElementById("aj-janela").value,
     simulacao: document.getElementById("aj-sim").checked
   });
   msg("aj-msg", r.ok?"Ajustes salvos.":"erro", r.ok);
@@ -871,7 +1046,7 @@ setInterval(carregarEstado, 60000);
 
 (async function init(){
   await carregarEstado();
-  novaRegra(); novaPessoa();
+  novaRegra(); novaPessoa(); novoTrajeto();
   await carregarMapa(true);
   carregarOnibus();
   laçoMapa();

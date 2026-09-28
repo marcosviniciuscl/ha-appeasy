@@ -315,6 +315,44 @@ class Handler(BaseHTTPRequestHandler):
             motor.salvar(cfg)
             return self._json({"ok": True})
 
+        if caminho == "/api/trajetos":
+            trajeto = self._limpa_trajeto(corpo.get("trajeto") or corpo)
+            if not trajeto.get("pessoa"):
+                return self._erro("informe a pessoa")
+            if not trajeto.get("linha"):
+                return self._erro("informe a linha")
+            lista = cfg.setdefault("trajetos", [])
+            for i, x in enumerate(lista):
+                if x.get("id") == trajeto["id"]:
+                    lista[i] = trajeto
+                    break
+            else:
+                lista.append(trajeto)
+            motor.salvar(cfg)
+            motor.registrar(f"Trajeto salvo: linha {trajeto['linha']} · "
+                            f"{len(trajeto['horarios'])} horário(s)")
+            return self._json({"ok": True, "trajeto": trajeto})
+
+        if caminho.startswith("/api/trajetos/"):
+            tid = caminho.rsplit("/", 1)[-1]
+            cfg["trajetos"] = [x for x in cfg.get("trajetos", []) if x.get("id") != tid]
+            motor.salvar(cfg)
+            motor.registrar("Trajeto removido")
+            return self._json({"ok": True})
+
+        if caminho == "/api/trajeto_teste":
+            pessoa = motor._pessoa(str(corpo.get("pessoa") or ""))
+            trajeto = next((x for x in cfg.get("trajetos", []) if x.get("id") == corpo.get("id")), None)
+            if not pessoa or not trajeto:
+                return self._erro("pessoa ou trajeto não encontrado", 404)
+            info = motor.calcular_trajeto(trajeto)
+            if not info:
+                return self._erro("não achei ônibus dessa linha perto de " + pessoa["nome"], 404)
+            bus = info["onibus"][0] if info["onibus"] else {"id": "0", "eta_min": None,
+                                                            "risco": "sem-previsao"}
+            motor.enviar_saida(info, bus)
+            return self._json({"ok": True, "info": info})
+
         if caminho == "/api/ha/pessoas":
             pessoas, rastreadores, notificacoes = motor.pessoas_ha()
             return self._json({"pessoas": pessoas, "rastreadores": rastreadores, "notificacoes": notificacoes})
@@ -405,6 +443,31 @@ class Handler(BaseHTTPRequestHandler):
             "entidade": str(pessoa.get("entidade") or "").strip(),
         }
 
+    def _limpa_trajeto(self, t):
+        horarios = []
+        for h in (t.get("horarios") or []):
+            h = str(h).strip()
+            if re.match(r"^\d{1,2}:\d{2}$", h):
+                hh, mm = h.split(":")
+                horarios.append(f"{int(hh):02d}:{int(mm):02d}")
+        dias = []
+        for d in (t.get("dias") or []):
+            try:
+                d = int(d)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= d <= 6:
+                dias.append(d)
+        return {
+            "id": str(t.get("id") or uuid.uuid4().hex[:8]),
+            "ativo": bool(t.get("ativo", True)),
+            "pessoa": str(t.get("pessoa") or "").strip(),
+            "linha": str(t.get("linha") or "").strip(),
+            "sentido": "volta" if str(t.get("sentido") or "ida").strip() == "volta" else "ida",
+            "dias": sorted(set(dias)) if dias else list(range(7)),
+            "horarios": sorted(set(horarios)),
+        }
+
     def _hora(self, valor, padrao):
         if isinstance(valor, str) and re.match(r"^\d{1,2}:\d{2}$", valor.strip()):
             h, m = valor.strip().split(":")
@@ -427,6 +490,7 @@ class Handler(BaseHTTPRequestHandler):
             "ajustes": cfg["ajustes"],
             "pessoas": cfg.get("pessoas", []),
             "regras": cfg.get("regras", []),
+            "trajetos": cfg.get("trajetos", []),
             "mapa": cfg.get("mapa", {}),
             "cidade": api.cidade_atual(),
             "cidades": api.cidades(),
