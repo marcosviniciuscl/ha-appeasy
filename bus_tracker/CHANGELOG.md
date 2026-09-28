@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.25.0
+
+- Ao **tocar num ônibus no mapa**, o painel desenha a **rota do itinerário**
+  (linha azul), mostra as paradas e o **tempo estimado** até cada uma.
+- Detalhes extraídos da API: sentido/apelido da linha, destino, previsão
+  ("X Minutos" ou "SAÍDA: HH:MM"), acessibilidade e rumo do veículo.
+- Novos endpoints internos da API SIUMobile: paradas por itinerário
+  (com coordenadas) e previsões por parada.
+
 ## 0.24.4
 
 - Agora dá para **escolher a cidade pelo painel**; a lista de linhas passa a

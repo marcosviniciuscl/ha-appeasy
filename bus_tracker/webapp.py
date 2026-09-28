@@ -201,6 +201,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(self._estado())
         if caminho == "/api/mapa":
             return self._json(motor.estado_publico())
+        if caminho.startswith("/api/onibus/"):
+            return self._json(motor.detalhes_onibus(caminho.rsplit("/", 1)[-1]))
         if caminho == "/api/log":
             return self._json({"log": list(motor.log)})
         if caminho == "/api/painel":

@@ -11,6 +11,8 @@ qualquer outra cidade que use o mesmo sistema por configuração manual.
 ## Como usar
 
 1. Abra o App e vá na aba **Mapa** para ver os ônibus das linhas monitoradas.
+   **Toque em um ônibus** para ver a rota que ele faz (linha azul), as paradas e
+   o tempo estimado até cada uma, além do sentido, destino e acessibilidade.
 2. Em **Ônibus**, escolha quais linhas e pessoas aparecem no mapa.
 3. Em **Pessoas**, cadastre quem recebe avisos (celular + localização do HA).
 4. Em **Avisos**, crie regras (linha, dias, horário) para receber notificação

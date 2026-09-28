@@ -239,10 +239,52 @@ def itinerarios_da_linha(cod_linha, sigla, amostras=5):
 
 
 def veiculos_do_itinerario(cod_it):
-    """Veículos ao vivo de um itinerário."""
+    """Veículos ao vivo de um itinerário.
+
+    Cada veículo tem: lat, long, direcao (rumo em graus), descricao (linha),
+    numVeicGestor (id do veículo) e flagAnimacao.
+    """
     d = _jsonp(_get(f"/V3/retornaVeiculosMapa/{cod_it}/0/{_praca()}/retornoJSONVeiculos"),
                "retornoJSONVeiculos")
     return d.get("veiculos", [])
+
+
+def paradas_do_itinerario(cod_it, ttl=6 * 3600):
+    """Paradas de um itinerário, COM coordenadas e na ordem da rota.
+
+    Endpoint: buscarParadasPorItiComCoordenadas (sem prefixo V3 e sem praça).
+    """
+    agora = time.time()
+    cache = _paradas_iti_cache.get(cod_it)
+    if cache and (agora - cache[0]) < ttl:
+        return cache[1]
+    d = _jsonp(_get(f"/buscarParadasPorItiComCoordenadas/{cod_it}/0/retornoJSONPontosItinerario"),
+               "retornoJSONPontosItinerario")
+    saida = []
+    for p in d.get("paradas", []):
+        try:
+            saida.append({
+                "cod": p.get("cod"),
+                "nome": (p.get("desc") or "").strip(),
+                "lat": float(p["y"]),
+                "lon": float(p["x"]),
+                "cor": p.get("cor"),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    _paradas_iti_cache[cod_it] = (agora, saida)
+    return saida
+
+
+def previsoes_da_parada(cod_parada, acessiveis=False):
+    """Previsões de uma parada (lista de {'prev','sgLin','cor','tpAcess',...})."""
+    flag = "true" if acessiveis else "false"
+    d = _jsonp(_get(f"/V3/buscarPrevisoes/{cod_parada}/{flag}/0/{_praca()}/retornoJSON"),
+               "retornoJSON")
+    return d.get("previsoes", [])
+
+
+_paradas_iti_cache = {}
 
 
 def rota_do_itinerario(cod_it, ttl=6 * 3600):

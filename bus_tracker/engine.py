@@ -32,6 +32,13 @@ def _fmt_dist(m):
     return f"{m/1000:.1f} km" if m >= 1000 else f"{int(round(m))} m"
 
 
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 class Motor:
     def __init__(self, cfg, salvar_cb, linhas_extras=None):
         self.cfg = cfg
@@ -129,12 +136,21 @@ class Motor:
                     "s": None,
                     "offset": None,
                     "rumo": None,
+                    "cor": bruto.get("cor"),
+                    "direcao": _num(bruto.get("direcao")),
+                    "descricao": bruto.get("descricao"),
                     "primeira_vez": antigo is None,
                 }
                 if antigo:
                     novo["historico"] = antigo.get("historico", [])[-6:]
                     novo["vel_kmh"] = antigo.get("vel_kmh", 0.0)
                     novo["s"] = antigo.get("s")
+                    if novo.get("cor") is None:
+                        novo["cor"] = antigo.get("cor")
+                    if novo.get("direcao") is None:
+                        novo["direcao"] = antigo.get("direcao")
+                    if not novo.get("descricao"):
+                        novo["descricao"] = antigo.get("descricao")
                     if rota and antigo.get("cod_it") != cod_it:
                         novo["s"] = None  # trocou de itinerário: reprojeta
                     novo["historico"].append((agora, lat, lon))
@@ -213,6 +229,78 @@ class Motor:
             except Exception:
                 pass
         threading.Thread(target=self.ciclo, daemon=True, name="ciclo-reinicio").start()
+
+    def detalhes_onibus(self, bus_id):
+        """Detalhes de um veículo: traçado, paradas do itinerário e ETA até elas."""
+        with self.lock:
+            b = dict(self.onibus.get(str(bus_id)) or {})
+        if not b:
+            return {"ok": False, "erro": "veículo fora do mapa"}
+        cod_it = b.get("cod_it")
+        rota = None
+        try:
+            rota = api.rota_do_itinerario(cod_it) if cod_it else None
+        except Exception as e:
+            log.debug(f"rota {cod_it}: {e}")
+
+        pontos = []
+        if rota:
+            passo = max(1, len(rota.pts) // 700)
+            pontos = [[round(p[0], 5), round(p[1], 5)] for p in rota.pts[::passo]]
+
+        vel = max(b.get("vel_kmh") or 0.0,
+                  float(self.cfg["ajustes"].get("velocidade_min_kmh", 12)))
+        s_bus = b.get("s")
+        paradas = []
+        try:
+            for p in api.paradas_do_itinerario(cod_it):
+                d = None
+                if rota and s_bus is not None:
+                    s_p, _ = rota.projetar((p["lat"], p["lon"]))
+                    d = s_p - s_bus
+                paradas.append({
+                    "cod": p.get("cod"), "nome": p["nome"], "lat": p["lat"], "lon": p["lon"],
+                    "cor": p.get("cor"),
+                    "dist_m": round(max(d, 0)) if d is not None else None,
+                    "eta_min": round((max(d, 0) / 1000) / vel * 60, 1) if d is not None else None,
+                    "passou": bool(d is not None and d < -40),
+                })
+        except Exception as e:
+            log.debug(f"paradas do itinerário {cod_it}: {e}")
+
+        # Previsão "oficial" (como o app: "6 Minutos" / "SAÍDA: HH:MM") por parada
+        previsao = acessivel = sentido = None
+        for p in [x for x in paradas if not x["passou"]][:4]:
+            if not p.get("cod"):
+                continue
+            try:
+                for pv in api.previsoes_da_parada(p["cod"]):
+                    if str(pv.get("numVeicGestor")) == str(bus_id):
+                        p["prev"] = pv.get("prev")
+                        p["acessivel"] = pv.get("tpAcess") == 1
+                        if not sentido:
+                            sentido = pv.get("apelidoLinha")
+                        if previsao is None:
+                            previsao = pv.get("prev")
+                            acessivel = pv.get("tpAcess") == 1
+                        break
+            except Exception as e:
+                log.debug(f"previsão da parada {p.get('cod')}: {e}")
+
+        return {
+            "ok": True,
+            "onibus": {
+                "id": b.get("id"), "linha": b.get("linha"), "cod_it": cod_it,
+                "lat": b.get("lat"), "lon": b.get("lon"),
+                "em_movimento": b.get("em_movimento"), "vel_kmh": b.get("vel_kmh"),
+                "rumo": b.get("direcao") if b.get("direcao") is not None else b.get("rumo"),
+                "cor": b.get("cor") or (paradas[0].get("cor") if paradas else None),
+                "destino": paradas[-1]["nome"] if paradas else None,
+                "sentido": sentido, "previsao": previsao, "acessivel": acessivel,
+            },
+            "rota": pontos,
+            "paradas": paradas,
+        }
 
     # ------------------------------------------------------------ publicar HA
     def publicar_ha(self):
@@ -790,6 +878,9 @@ class Motor:
                 onibus.append({
                     "id": b["id"], "linha": b["linha"], "lat": b["lat"], "lon": b["lon"],
                     "em_movimento": b["em_movimento"], "vel_kmh": b.get("vel_kmh"),
+                    "cod_it": b.get("cod_it"),
+                    "rumo": b.get("direcao") if b.get("direcao") is not None else b.get("rumo"),
+                    "cor": b.get("cor"),
                     "visto_ha_s": round(idade),
                     "eta": None,
                 })

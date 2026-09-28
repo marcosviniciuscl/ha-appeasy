@@ -110,6 +110,7 @@
         <button class="bt sec sm" onclick="mostrarTudo()">Mostrar tudo</button>
       </div>
     </div>
+    <div class="card" id="rota-info" style="display:none"></div>
     <div class="card">
       <h2>Pontos de embarque</h2>
       <div id="lista-pontos"></div>
@@ -236,7 +237,8 @@
 const BASE = location.pathname.replace(/\/$/, "") + "/";
 const DIAS = ["seg","ter","qua","qui","sex","sáb","dom"];
 let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
-let mapa, camada;
+let mapa, camada, rotaSelLayer;
+let onibusSel = null, rotaAjustada = false;
 let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
 
@@ -347,6 +349,8 @@ function iniciarMapa(){
     maxZoom:19, attribution:"© OpenStreetMap"
   }).addTo(mapa);
   camada = L.layerGroup().addTo(mapa);
+  rotaSelLayer = L.layerGroup().addTo(mapa);
+  mapa.on("click", limparSelecao);
 }
 
 async function carregarMapa(primeiro){
@@ -360,7 +364,10 @@ async function carregarMapa(primeiro){
     const cls = b.em_movimento ? "" : " parado";
     const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)} km/h` : "";
     const ic = L.divIcon({className:"", html:`<div class="buspin${cls}">${esc(b.linha)} · ${esc(b.id)}${vel}</div>`, iconSize:[0,0], iconAnchor:[24,10]});
-    novos.push(L.marker([b.lat,b.lon], {icon:ic}).bindPopup(`<b>Linha ${esc(b.linha)}</b><br>Veículo ${esc(b.id)}<br>${b.em_movimento?"em movimento":"parado"}${vel}`));
+    const mk = L.marker([b.lat,b.lon], {icon:ic})
+      .bindPopup(`<b>Linha ${esc(b.linha)}</b><br>Veículo ${esc(b.id)}<br>${b.em_movimento?"em movimento":"parado"}${vel}<br><i>Toque para ver a rota</i>`);
+    mk.on("click", ()=>selecionarOnibus(b.id));
+    novos.push(mk);
   });
   (d.lugares||[]).forEach(p=>{
     novos.push(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:3, fillColor:"#3d7dff", fillOpacity:.35})
@@ -386,6 +393,62 @@ async function carregarMapa(primeiro){
      <div class="meta">linha ${esc(p.linha)} · para ${esc(p.pessoa)} · ${fmtDist(p.dist_pessoa)} da pessoa</div></div></div>`
   ).join("") : '<div class="vazio">Nenhum ponto calculado ainda. Os pontos aparecem quando o app localiza a parada da linha mais próxima de cada pessoa.</div>';
   if (primeiro && novos.length===0) mapa.setView(centroMapa(), 13);
+  if (onibusSel) desenharRotaSel();
+}
+
+/* ------------------------------------------------ rota do ônibus selecionado */
+const nomeCurto = s => { s = String(s||""); return s.length>46 ? s.slice(0,45).trim()+"…" : s; };
+const textoEta = p => p.passou ? "já passou" : (p.prev ? esc(p.prev) : (p.eta_min!=null ? "~"+Math.round(p.eta_min)+" min" : "?"));
+async function selecionarOnibus(id){
+  onibusSel = id;
+  rotaAjustada = false;
+  await desenharRotaSel();
+}
+async function desenharRotaSel(){
+  if (!rotaSelLayer) return;
+  rotaSelLayer.clearLayers();
+  if (!onibusSel) return;
+  let d;
+  try { d = await api("/api/onibus/"+encodeURIComponent(onibusSel)); }
+  catch(e){ return; }
+  if (!d || !d.ok){ limparSelecao(); return; }
+  const o = d.onibus||{}, paradas = d.paradas||[];
+  let bounds = null;
+  if ((d.rota||[]).length > 1){
+    const pl = L.polyline(d.rota, {color:"#3d7dff", weight:5, opacity:.85, bubblingMouseEvents:false}).addTo(rotaSelLayer);
+    bounds = pl.getBounds();
+  }
+  paradas.forEach(p=>{
+    const cor = p.passou ? "#8a94a6" : "#3d7dff";
+    L.circleMarker([p.lat,p.lon], {radius:5, color:cor, weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
+      .bindPopup(`<b>${esc(p.nome)}</b>` + (p.passou ? "" : `<br>${textoEta(p)}${p.dist_m!=null?" · "+fmtDist(p.dist_m):""}`))
+      .addTo(rotaSelLayer);
+  });
+  const prox = paradas.filter(p=>!p.passou)
+    .sort((a,b)=>(a.eta_min==null?1e9:a.eta_min)-(b.eta_min==null?1e9:b.eta_min)).slice(0,5);
+  const info = document.getElementById("rota-info");
+  if (info){
+    const extras = [];
+    if (o.sentido) extras.push("Sentido: "+esc(o.sentido));
+    if (o.destino) extras.push("Destino: "+esc(o.destino));
+    if (o.acessivel===true) extras.push("♿ acessível");
+    if (o.previsao) extras.push(esc(o.previsao));
+    info.style.display = "block";
+    info.innerHTML = `<h2>Linha ${esc(o.linha)} · veículo ${esc(o.id)}
+        <button class="bt sec sm" style="margin-left:auto" onclick="limparSelecao()">Fechar</button></h2>
+      <div class="meta">${extras.join(" · ")}</div>` +
+      (prox.length ? `<div class="meta" style="margin-top:8px;font-weight:600">Próximas paradas</div>` +
+        prox.map(p=>`<div class="meta">• ${esc(nomeCurto(p.nome))} — ${textoEta(p)} <span style="opacity:.6">(${fmtDist(p.dist_m)})</span></div>`).join("")
+        : '<div class="meta">Sem paradas previstas.</div>');
+  }
+  if (bounds && !rotaAjustada){ mapa.fitBounds(bounds, {padding:[30,30]}); rotaAjustada = true; }
+}
+function limparSelecao(){
+  onibusSel = null;
+  rotaAjustada = false;
+  if (rotaSelLayer) rotaSelLayer.clearLayers();
+  const info = document.getElementById("rota-info");
+  if (info) info.style.display = "none";
 }
 
 function mostrarTudo(){
