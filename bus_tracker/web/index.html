@@ -65,11 +65,12 @@
   .leaflet-container{background:#20242c;font:inherit}
   .leaflet-control-attribution{font-size:9.5px}
   .leaflet-bottom{bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px)}
-  .map-pills{position:absolute;z-index:22;left:14px;right:14px;
-             top:calc(var(--hdr) + env(safe-area-inset-top) + 10px);display:flex;gap:8px}
+  .map-pills{position:absolute;z-index:22;left:12px;right:auto;
+             top:calc(env(safe-area-inset-top) + 11px);display:flex;flex-wrap:wrap;gap:8px;
+             max-width:calc(100% - 140px)}
   .map-controls{position:absolute;z-index:22;right:12px;
                 top:calc(var(--hdr) + env(safe-area-inset-top) + 46px);
-                display:grid;grid-template-columns:repeat(2,40px);gap:8px;justify-items:center}
+                display:grid;grid-template-columns:40px;gap:8px;justify-items:center}
 
   /* ---------- botões flutuantes / pills ---------- */
   .fab{width:40px;height:40px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;cursor:pointer;
@@ -85,11 +86,20 @@
   /* ---------- painel lateral de detalhes (mapa) ---------- */
   .detail{position:absolute;z-index:25;left:0;right:0;
           bottom:calc(var(--nav) + env(safe-area-inset-bottom));
-          border-radius:20px 20px 0 0;padding:18px 14px 16px;
+          border-radius:20px 20px 0 0;padding:22px 14px 16px;
           box-shadow:0 -12px 44px rgba(0,0,0,.5);
-          max-height:44vh;overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1)}
-  .detail::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
-                  width:40px;height:4px;border-radius:2px;background:var(--txt2);opacity:.45}
+          max-height:min(46vh, 440px);overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1);
+          transition:max-height .26s cubic-bezier(.2,.7,.3,1)}
+  /* puxador do painel: arraste para baixo para recolher, para cima para abrir */
+  .detail .grab{position:absolute;top:0;left:0;right:0;height:20px;z-index:3;cursor:grab;
+                display:grid;place-items:center;touch-action:none;
+                -webkit-tap-highlight-color:transparent}
+  .detail .grab::after{content:"";width:40px;height:4px;border-radius:2px;
+                       background:var(--txt2);opacity:.45;transition:opacity .15s,width .15s}
+  .detail .grab:active::after,.detail.min .grab::after{opacity:.8;width:52px}
+  .detail.min{max-height:72px;overflow:hidden;padding-bottom:12px}
+  .detail.grande{max-height:min(80vh, 760px)}
+  .detail.oculto .corpo{display:none}
   @keyframes sobe{from{transform:translateY(16px);opacity:.3}to{transform:none;opacity:1}}
   .detail h2{font-size:15px;margin:0 0 10px;font-weight:680;display:flex;align-items:center;gap:8px}
   .detail .linha-titulo{display:flex;align-items:center;gap:10px}
@@ -295,7 +305,7 @@
     .rail .tab-btn .ic{width:22px;height:22px}
     .rail .tab-btn.on{background:var(--acento);color:#20160a}
 
-    .map-pills{left:104px;right:auto}
+    .map-pills{left:104px;right:auto;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px)}
     .map-controls{grid-template-columns:40px;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
                   right:18px;left:auto}
     .detail{left:auto;right:18px;top:calc(var(--hdr) + env(safe-area-inset-top) + 200px);
@@ -364,16 +374,18 @@
   </div>
   <aside class="detail glass" id="rota-info" style="display:none"></aside>
   <aside class="detail glass" id="trajetos-sheet" style="display:none">
+    <div class="grab" aria-hidden="true"></div>
     <h2>Trajetos
-      <button class="btn-x" style="margin-left:auto" onclick="toggleTrajetos()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
+      <button class="btn-x" style="margin-left:auto" onclick="fecharPainel(this.closest('.detail'))"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
     </h2>
-    <div id="lista-trajetos-mapa"></div>
+    <div class="corpo" id="lista-trajetos-mapa"></div>
   </aside>
   <aside class="detail glass" id="pontos-sheet" style="display:none">
+    <div class="grab" aria-hidden="true"></div>
     <h2>Pontos de embarque
-      <button class="btn-x" style="margin-left:auto" onclick="togglePontos()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
+      <button class="btn-x" style="margin-left:auto" onclick="fecharPainel(this.closest('.detail'))"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
     </h2>
-    <div id="lista-pontos"></div>
+    <div class="corpo" id="lista-pontos"></div>
   </aside>
 </section>
 
@@ -879,7 +891,9 @@ async function testarTrajeto(){
 }
 function toggleTrajetos(){
   const el = document.getElementById("trajetos-sheet");
-  el.style.display = (el.style.display==="block") ? "none" : "block";
+  if (el.style.display !== "block") return abrirPainel(el);
+  if (painelMinimizado(el)) return restaurarPainel(el);
+  fecharPainel(el);
 }
 
 /* ------------------------------------------------ mapa */
@@ -975,11 +989,23 @@ async function carregarPontosProximos(latlng){
   }
 }
 function fecharModais(){
-  ["rota-info", "trajetos-sheet", "pontos-sheet"].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.style.display = "none";
-  });
+  ["trajetos-sheet", "pontos-sheet"].forEach(id=> fecharPainel(document.getElementById(id)));
   limparSelecao();
+}
+/* toque no mapa: no celular recolhe os painéis abertos; se já estiverem
+   recolhidos (ou no desktop), fecha tudo e limpa a seleção. */
+function recolherOuFecharPaineis(){
+  if (EH_CELULAR()){
+    let recolheu = false;
+    ["rota-info", "trajetos-sheet", "pontos-sheet"].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el && el.style.display !== "none" && !painelMinimizado(el)){
+        minimizarPainel(el); recolheu = true;
+      }
+    });
+    if (recolheu) return;
+  }
+  fecharModais();
 }
 function aoClicarMapa(e){
   if (marcandoDestino){
@@ -994,9 +1020,9 @@ function aoClicarMapa(e){
     msg("casa-msg", "Posição marcada. Clique em Salvar casa.");
     return;
   }
-  // clicou no mapa: volta para a aba Mapa e fecha os painéis
+  // clicou no mapa: volta para a aba Mapa e recolhe/fecha os painéis
   if (document.body.dataset.tab !== "mapa") trocarAba("mapa");
-  fecharModais();
+  recolherOuFecharPaineis();
 }
 function iniciarMapa(){
   if (mapa) return;
@@ -1018,6 +1044,8 @@ function iniciarMapa(){
   rotaSelLayer = L.layerGroup().addTo(mapa);
   casaLayer = L.layerGroup().addTo(mapa);
   mapa.on("click", aoClicarMapa);
+  ["rota-info", "trajetos-sheet", "pontos-sheet"].forEach(id=>
+    ligarArrastoPainel(document.getElementById(id)));
 }
 
 async function carregarMapa(primeiro){
@@ -1206,6 +1234,8 @@ function pintarSelecao(){
 async function selecionarOnibus(id){
   onibusSel = id;
   rotaAjustada = false;
+  // ao escolher um ônibus, garante o painel aberto (mesmo se estava recolhido)
+  restaurarPainel(document.getElementById("rota-info"));
   pintarSelecao();
   await desenharRotaSel();
 }
@@ -1256,18 +1286,21 @@ async function desenharRotaSel(){
     </div>`;
   }).join("");
   const info = document.getElementById("rota-info");
-  info.style.display = "block";
+  abrirPainel(info);
   info.innerHTML = `
+    <div class="grab" aria-hidden="true"></div>
     <h2><span class="badge-linha">${esc(o.linha)}</span>
       <span>Linha ${esc(o.linha)} · veículo ${esc(o.id)}</span>
       <button class="btn-x" style="margin-left:auto" onclick="limparSelecao()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
     </h2>
-    ${o.sentido ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-map"/></svg><span>${esc(o.sentido)}</span></div>` : ""}
-    ${o.destino ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-flag"/></svg><span>Destino: <b>${esc(o.destino)}</b></span></div>` : ""}
-    ${o.acessivel===true ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-wheel"/></svg><span>Veículo acessível</span></div>` : ""}
-    <div class="sec-title" style="margin:12px 0 2px">Paradas · ${nPassou} passaram, ${paradas.length-nPassou} restantes</div>
-    <div class="timeline">${linhas || '<div class="meta">Sem paradas previstas.</div>'}</div>
-    <p class="hint">Toque num ponto para realçá-lo no mapa; no balão, use "Criar trajeto com este destino".</p>`;
+    <div class="corpo">
+      ${o.sentido ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-map"/></svg><span>${esc(o.sentido)}</span></div>` : ""}
+      ${o.destino ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-flag"/></svg><span>Destino: <b>${esc(o.destino)}</b></span></div>` : ""}
+      ${o.acessivel===true ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-wheel"/></svg><span>Veículo acessível</span></div>` : ""}
+      <div class="sec-title" style="margin:12px 0 2px">Paradas · ${nPassou} passaram, ${paradas.length-nPassou} restantes</div>
+      <div class="timeline">${linhas || '<div class="meta">Sem paradas previstas.</div>'}</div>
+      <p class="hint">Toque num ponto para realçá-lo no mapa; no balão, use "Criar trajeto com este destino".</p>
+    </div>`;
   if (bounds && !rotaAjustada){ mapa.fitBounds(bounds, {padding:[40,40]}); rotaAjustada = true; }
 }
 
@@ -1302,12 +1335,80 @@ function limparSelecao(){
   rotaAjustada = false;
   if (rotaSelLayer) rotaSelLayer.clearLayers();
   const info = document.getElementById("rota-info");
-  if (info) info.style.display = "none";
+  if (info) fecharPainel(info);
   pintarSelecao();
 }
 function togglePontos(){
   const el = document.getElementById("pontos-sheet");
-  el.style.display = (el.style.display==="block") ? "none" : "block";
+  if (el.style.display !== "block") return abrirPainel(el);
+  if (painelMinimizado(el)) return restaurarPainel(el);
+  fecharPainel(el);
+}
+
+/* ------------------------------------------------ painel inferior (mobile) */
+/* No celular os painéis do mapa são "gavetas": arraste para baixo para
+   recolher (fica só o título) e para cima para abrir. Tocar no mapa também
+   recolhe, para o mapa ocupar a tela sem fechar a seleção. */
+const EH_CELULAR = () => window.matchMedia("(max-width: 899px)").matches;
+function painelMinimizado(el){ return !!el && el.classList.contains("min"); }
+
+function abrirPainel(el){
+  if (!el) return;
+  const jaAberto = el.style.display === "block";
+  el.style.display = "block";
+  // só volta ao estado inicial quando o painel é reaberto do zero
+  if (EH_CELULAR() && !jaAberto) el.classList.remove("min", "oculto", "grande");
+}
+function fecharPainel(el){
+  if (!el) return;
+  el.style.display = "none";
+  el.classList.remove("min", "oculto", "grande");
+}
+function minimizarPainel(el){
+  if (!el || !EH_CELULAR() || painelMinimizado(el)) return;
+  el.classList.remove("grande");
+  el.classList.add("min");
+  clearTimeout(el._minTimer);
+  // esconde o conteúdo só quando a animação termina (evita rolagem dentro do título)
+  el._minTimer = setTimeout(()=>{ if (painelMinimizado(el)) el.classList.add("oculto"); }, 300);
+}
+function restaurarPainel(el){
+  if (!el || !painelMinimizado(el)) return;
+  clearTimeout(el._minTimer);
+  el.classList.remove("oculto");
+  requestAnimationFrame(()=>el.classList.remove("min"));
+}
+function alternarPainelVertical(el, dir){
+  if (!el) return;
+  if (dir < 0){                              // arrastou para baixo
+    if (el.classList.contains("grande")){ el.classList.remove("grande"); return; }
+    minimizarPainel(el);
+  } else {                                   // arrastou para cima
+    if (painelMinimizado(el)){ restaurarPainel(el); return; }
+    if (EH_CELULAR()) el.classList.add("grande");
+  }
+}
+function ligarArrastoPainel(el){
+  if (!el || el._arrasto) return;
+  el._arrasto = true;
+  let y0 = null, mevi = false;
+  el.addEventListener("pointerdown", e=>{
+    if (!EH_CELULAR() || !e.target.closest(".grab")) return;
+    y0 = e.clientY; mevi = false;
+    try { e.target.closest(".grab").setPointerCapture(e.pointerId); } catch(_){}
+  });
+  el.addEventListener("pointermove", e=>{
+    if (y0 === null) return;
+    if (Math.abs(e.clientY - y0) > 6) mevi = true;
+  });
+  el.addEventListener("pointerup", e=>{
+    if (y0 === null) return;
+    const dy = e.clientY - y0; y0 = null;
+    if (dy > 36) return alternarPainelVertical(el, -1);
+    if (dy < -36) return alternarPainelVertical(el, 1);
+    if (!mevi) alternarPainelVertical(el, painelMinimizado(el) ? 1 : -1); // toque curto alterna
+  });
+  el.addEventListener("pointercancel", ()=>{ y0 = null; });
 }
 
 function mostrarTudo(){

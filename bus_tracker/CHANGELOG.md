@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.45.0
+
+- **Painéis do mapa no celular viram gavetas**: arraste o puxador **para baixo**
+  para recolher (fica só o título, ocupando pouco da tela) e **para cima** para
+  abrir. Um toque curto no puxador também alterna.
+- **Tocar no mapa recolhe o card** no celular (em vez de fechá-lo), mantendo a
+  rota/ônibus selecionado — toque de novo para fechar de vez.
+- **Ao abrir um ônibus** o painel volta a aparecer inteiro, mesmo se estiver
+  recolhido.
+- **Layout do mapa**: os contadores de ônibus/pessoas ficam no **canto superior
+  esquerdo** e os **botões de controle em uma única coluna** no lado direito
+  (no celular também), deixando o mapa mais livre.
+
 ## 0.44.0
 
 - **Linha do tempo das paradas**: ao selecionar um ônibus, o painel mostra
