@@ -33,6 +33,14 @@ def _fmt_dist(m):
     return f"{m/1000:.1f} km" if m >= 1000 else f"{int(round(m))} m"
 
 
+_COR_RISCO = {"ok": "#22c55e", "correr": "#f5a524", "perdeu": "#e5484d",
+              "sem-previsao": "#FFB300"}
+
+
+def _cor_risco(risco):
+    return _COR_RISCO.get(risco or "", "#FFB300")
+
+
 def _num(v):
     try:
         return float(v)
@@ -886,13 +894,10 @@ class Motor:
             return saida
 
         ordenadas = sorted(validas.values(), key=lambda e: e["dist"])
-        # 1) parada mais próxima que tenha um ônibus indo ao destino
-        for e in ordenadas:
-            cands = cands_da(e)
-            if cands:
-                return e["parada"], cands
-        # 2) nenhuma tem ônibus agora: mostra a mais próxima válida
-        return ordenadas[0]["parada"], []
+        # ponto FIXO: sempre a parada válida mais próxima da pessoa. O que muda
+        # é o ônibus que passa nela — quando um passa, o próximo que vier assume.
+        e = ordenadas[0]
+        return e["parada"], cands_da(e)
 
     def _risco(self, t_pessoa, t_bus, margem):
         if t_bus is None:
@@ -1046,14 +1051,14 @@ class Motor:
                 return False
 
         if not coletados:
-            # sem ônibus indo ao destino agora. Se o ponto existe e está além do
-            # limite de caminhada, mostramos o trajeto em cinza ("longe").
+            # mantém o ponto de encontro fixo mesmo sem ônibus indo agora: o
+            # destaque aparece quando o próximo ônibus que passar nele vier.
             if pontos_linha:
                 sig_nome, ponto = min(pontos_linha, key=lambda x: x[1].get("dist_m") or 0)
-                if limite > 0 and (ponto.get("dist_m") or 0) > limite:
-                    info = montar(ponto, sig_nome, [], dentro_da_janela(), None, [], True)
-                    self._log_trajeto(t, info)
-                    return info
+                longe = limite > 0 and (ponto.get("dist_m") or 0) > limite
+                info = montar(ponto, sig_nome, [], dentro_da_janela(), None, [], longe)
+                self._log_trajeto(t, info)
+                return info
             self._log_trajeto(t, None)
             return None
 
@@ -1269,7 +1274,7 @@ class Motor:
             "tag": f"trajeto_saida_{info['pessoa_id']}",
             "group": f"trajeto_{info['pessoa_id']}",
             "channel": "Bus Tracker",
-            "color": "#3d7dff",
+            "color": _cor_risco(bus.get("risco")),
             "notification_icon": "mdi:walk",
             "interruption_level": "time-sensitive",
             "actions": [
@@ -1280,14 +1285,36 @@ class Motor:
 
     def push_rastreio(self, pessoa, rastreio, bus, alvo, eta, d, primeiro=False):
         chave = rastreio.get("chave") or pessoa["id"]
-        complemento, _ = self._texto_ponto(alvo, curto=True)
-        msg = f"~{eta:.0f} min até você" if eta is not None else "chegando"
-        if complemento:
-            msg += f" · {complemento}"
+        ponto = rastreio.get("ponto") or {}
+        caminhada_m = ponto.get("dist_m")
+        caminhada_min = ponto.get("tempo_min")
+        # atualiza a distância/tempo do usuário até o ponto conforme ele se move
+        pos_p = self.posicao(pessoa.get("entidade"))
+        if pos_p and ponto.get("lat") is not None:
+            d_user = geo.haversine(pos_p, (ponto["lat"], ponto["lon"]))
+            fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
+            caminhada_m = round(d_user * fator)
+            caminhada_min = round(self._tempo_pe_min(caminhada_m), 1)
+        margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
+        risco = self._risco(caminhada_min, eta, margem) if caminhada_min is not None else "sem-previsao"
+        cor = _cor_risco(risco)
+        partes = []
+        if eta is not None and d is not None:
+            partes.append(f"🚌 ônibus a {_fmt_dist(d)} (~{eta:.0f} min)")
+        elif eta is not None:
+            partes.append(f"🚌 ônibus ~{eta:.0f} min")
+        else:
+            partes.append("🚌 ônibus chegando")
+        if caminhada_m is not None:
+            partes.append(f"🚶 você a {_fmt_dist(caminhada_m)} (~{caminhada_min:.0f} min)")
+        risco_txt = {"ok": "dá tempo", "correr": "corra!",
+                     "perdeu": "não dá mais", "sem-previsao": "sem previsão"}.get(risco, "")
+        if risco_txt:
+            partes.append(risco_txt)
         self._notificar(
             pessoa,
             f"Ônibus {bus['linha']}",
-            msg,
+            " · ".join(partes),
             {
                 "tag": f"onibus_rastreio_{chave}",
                 "group": f"onibus_{chave}",
@@ -1297,8 +1324,8 @@ class Motor:
                 "alert_once": not primeiro,    # Android: alerta só uma vez
                 "sticky": True,                # Android: mantém ao tocar
                 "notification_icon": "mdi:bus",
-                "notification_icon_color": "#FFB300",  # iOS
-                "color": "#FFB300",                      # Android
+                "notification_icon_color": cor,  # iOS
+                "color": cor,                      # Android
                 "actions": [{"action": f"PARAR|{chave}", "title": "Parar rastreio"}],
             },
         )

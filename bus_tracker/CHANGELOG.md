@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.42.0
+
+- **Ponto de encontro fixo**: é sempre a parada válida **mais próxima** (não muda
+  conforme o ônibus anda). O que muda é o ônibus: quando o atual passa, o
+  **próximo que passar** naquele ponto assume o destaque e a cor.
+- O trajeto continua aparecendo mesmo **sem ônibus indo agora** (mostra o ponto
+  e espera o próximo).
+- **Notificação live** (Live Activity) com **cor pelo risco**: verde (dá tempo),
+  laranja (corra) e vermelho (não dá mais). Mostra a **distância/tempo do ônibus
+  até o ponto** e a **distância/tempo de você até o ponto** (atualizados conforme
+  você anda).
+
 ## 0.41.0
 
 - **Ponto de embarque correto**: a parada agora é casada pelo **itinerário** do
