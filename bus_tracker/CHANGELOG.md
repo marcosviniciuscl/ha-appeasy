@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.43.1
+
+- O **destaque prefere o ônibus que dá tempo** (você chega no ponto antes dele).
+  Antes podia ficar em vermelho ("perdeu") mostrando um ônibus atrasado mesmo
+  havendo outro que dava tempo. Se nenhum der tempo, não destaca.
+- Para o tipo **passa no ponto** sem horário no dia, destaca o próximo ônibus
+  que dá tempo (em vez de não destacar nada).
+- Diagnóstico agora mostra **de onde veio a localização** usada (GPS da pessoa ou
+  a casa) — ajuda a entender quando o ponto mais próximo parece longe.
+
 ## 0.43.0
 
 - **Tipo de horário no trajeto**: ao criar/editar você escolhe o que o horário

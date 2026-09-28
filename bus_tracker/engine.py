@@ -961,6 +961,13 @@ class Motor:
             return None
         pos_pessoa = self.posicao(pessoa.get("entidade"))
         ref = pos_pessoa or self.posicao_casa()
+        if pos_pessoa:
+            self._diag(t, f"posição da pessoa ({pessoa.get('entidade') or '—'}): "
+                          f"{pos_pessoa[0]:.5f},{pos_pessoa[1]:.5f}")
+        elif ref:
+            self._diag(t, f"sem GPS da pessoa — usando a casa: {ref[0]:.5f},{ref[1]:.5f}")
+        else:
+            self._diag(t, "sem posição (pessoa nem casa) — não dá para calcular")
         margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
         limite = float(self.cfg["ajustes"].get("dist_max_embarque_m", 2000) or 0)
         tipo = str(t.get("tipo_horario") or "ponto").lower()
@@ -1060,36 +1067,42 @@ class Motor:
             e = c["bus"].get("eta_min")
             return e if e is not None else 1e9
 
+        def _reach(c):
+            return c["bus"].get("risco") != "perdeu"
+
         def escolher():
             """Escolhe o ônibus que faz sentido para o tipo de horário.
 
-            Devolve (coletado, motivo) — ou (None, motivo) quando não há um
-            ônibus que se encaixe.
+            Sempre prefere um ônibus que **dá tempo** (você chega no ponto antes
+            dele). Se o ponto não tiver nenhum que dê tempo, não destaca.
+            Devolve (coletado, motivo) — ou (None, motivo).
             """
-            if alvo_min is None:
-                return None, "sem horário para hoje"
             if tipo == "ponto":
                 # horário = quando o ônibus passa no ponto
-                cands = [c for c in coletados if c["bus"]["eta_min"] is not None]
-                if not cands:
-                    return None, "sem ônibus"
-                perto = min(cands, key=lambda c: (abs(c["bus"]["eta_min"] - alvo_min), _far(c)))
-                if abs(perto["bus"]["eta_min"] - alvo_min) <= janela:
-                    return perto, f"passa no ponto ~{alvo_min:.0f} min do horário"
-                return None, (f"nenhum ônibus perto do horário "
-                              f"(mais próximo a {perto['bus']['eta_min']:.0f} min)")
-            if tipo == "liberado":
-                # horário = quando a pessoa fica livre; pega o PRÓXIMO ônibus
+                if alvo_min is None:
+                    # sem horário hoje: destaca o próximo que dá tempo
+                    uteis = [c for c in coletados if c["bus"]["eta_min"] is not None and _reach(c)]
+                    if uteis:
+                        return min(uteis, key=_eta), "próximo que dá tempo (sem horário hoje)"
+                    return None, "sem horário para hoje e nenhum ônibus dá tempo"
                 cands = [c for c in coletados if c["bus"]["eta_min"] is not None
-                         and c["bus"]["eta_min"] >= max(alvo_min, 0)
-                         and c["bus"]["risco"] != "perdeu"]
+                         and abs(c["bus"]["eta_min"] - alvo_min) <= janela]
+                if not cands:
+                    return None, "nenhum ônibus perto do horário"
+                uteis = [c for c in cands if _reach(c)]
+                pool = uteis or cands
+                return min(pool, key=lambda c: abs(c["bus"]["eta_min"] - alvo_min)), \
+                       ("passa perto do horário" if uteis else "pode perder o horário")
+            if tipo == "liberado":
+                # horário = quando a pessoa fica livre; pega o PRÓXIMO que dá tempo
+                cands = [c for c in coletados if c["bus"]["eta_min"] is not None
+                         and c["bus"]["eta_min"] >= max(alvo_min or 0, 0) and _reach(c)]
                 if not cands:
                     return None, "nenhum ônibus depois de liberar que dê tempo"
                 return min(cands, key=lambda c: (_far(c), _eta(c))), "próximo depois de liberar"
             # tipo == "chegar": horário = quando quer chegar no destino
             cands = [c for c in coletados if c["bus"].get("chega_min") is not None
-                     and c["bus"]["chega_min"] <= alvo_min
-                     and c["bus"]["risco"] != "perdeu"]
+                     and alvo_min is not None and c["bus"]["chega_min"] <= alvo_min and _reach(c)]
             if not cands:
                 return None, "nenhum ônibus chega no destino a tempo"
             # o mais tardio que ainda chega a tempo (= sair o mais tarde possível)
@@ -1121,10 +1134,12 @@ class Motor:
         ponto = escolhido["ponto"] if escolhido else min(
             (c["ponto"] for c in coletados), key=lambda p: p.get("dist_m") or 0)
         longe = limite > 0 and (ponto.get("dist_m") or 0) > limite
-        # monta a lista de ônibus: o escolhido primeiro, o resto por ETA
+        # monta a lista de ônibus: o escolhido primeiro; depois os que dão tempo,
+        # e só então os que "perdeu"
         onibus, vistos = [], set()
-        ordem = ([escolhido] if escolhido else []) + \
-                sorted(coletados, key=lambda c: (c["bus"]["eta_min"] is None, _eta(c)))
+        ordem = ([escolhido] if escolhido else []) + sorted(
+            coletados, key=lambda c: (c["bus"].get("risco") == "perdeu",
+                                      c["bus"]["eta_min"] is None, _eta(c)))
         for c in ordem:
             bid = c["bus"]["id"]
             if bid in vistos:
