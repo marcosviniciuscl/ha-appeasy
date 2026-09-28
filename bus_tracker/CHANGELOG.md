@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.40.0
+
+- **Destaque independe do horário**: o **próximo ônibus** que passa no ponto indo
+  ao destino fica destacado sempre que existir (antes só destacava dentro da
+  janela de horário, por isso "não aparecia"). A janela agora controla apenas os
+  avisos/rastreio automático.
+- Corrigido o **padrão de dias** do trajeto: era ter–sáb (excluía a segunda);
+  agora é **seg–sex**.
+- A janela de horário tolera o mesmo tempo **depois** do horário (antes eram só
+  5 min), então o trajeto continua ativo enquanto o ônibus chega.
+- Diagnóstico passa a dizer **por que** está fora do horário (dia da semana ou
+  próximo horário).
+
 ## 0.39.0
 
 - **Limite de caminhada configurável** (Ajustes → *Distância máxima até o ponto

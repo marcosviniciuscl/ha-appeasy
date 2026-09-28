@@ -771,7 +771,7 @@ function novoTrajeto(){
   destinosLinha = [];
   document.getElementById("dl-destinos").innerHTML = "";
   renderLinhasTrajeto();
-  renderDiasTrajeto([1,2,3,4,5]);
+  renderDiasTrajeto([0,1,2,3,4]);
 }
 function editarTrajeto(id){
   const t = (est.trajetos||[]).find(x=>x.id===id); if(!t) return;
@@ -975,12 +975,12 @@ async function carregarMapa(primeiro){
   const norm = s => String(s||"").replace(/^0+/,"") || "0";
   const sel = new Set((est.mapa.onibus||[]).map(norm));
 
-  // trajetos "acontecendo agora": destaca o PRÓXIMO ônibus que passa no ponto
-  const ativos = (d.trajetos||[]).filter(t=>t.agora);
+  // destaca o PRÓXIMO ônibus que passa no ponto de cada trajeto (indo ao destino)
+  const comBus = (d.trajetos||[]).filter(t=>t.bus_id);
   const idsDestaque = new Set();
-  ativos.forEach(t=>{ if (t.bus_id) idsDestaque.add(String(t.bus_id)); });
+  comBus.forEach(t=>idsDestaque.add(String(t.bus_id)));
   busesDestaque = idsDestaque;
-  const linhasAtivas = new Set(ativos.map(t=>norm(t.linha)));
+  const linhasAtivas = new Set(comBus.map(t=>norm(t.linha)));
   // o ônibus do trajeto ativo aparece mesmo que a linha não esteja selecionada
   const exibidos = (d.onibus||[]).filter(b=>
     sel.size===0 || sel.has(norm(b.linha)) || linhasAtivas.has(norm(b.linha)));
@@ -1025,7 +1025,7 @@ async function carregarMapa(primeiro){
   (d.trajetos||[]).forEach(t=>{
     const p = t.ponto;
     const longe = !!t.longe;
-    const ativo = !!t.agora && !longe;
+    const ativo = !!t.bus_id && !longe;
     const corPonto = longe ? "#8a94a6" : "#37b169";
     const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
       : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
@@ -1109,10 +1109,11 @@ async function carregarMapa(primeiro){
         <div class="meta">ponto ${esc(t.ponto.nome)} a ${fmtDist(t.ponto.dist_m)} — <b>longe</b> (limite ${fmtDist(t.dist_max_m||0)})</div>
       </div></div>`;
     }
+    const fora = t.agora ? "" : " · fora do horário";
     return `<div class="item"><div>
       <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
       <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
-      <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}</div>
+      <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}${fora}</div>
     </div></div>`;
   }).join("") : '<div class="vazio">Nenhum trajeto ativo para mostrar.</div>';
 

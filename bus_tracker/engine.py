@@ -971,9 +971,18 @@ class Motor:
 
         def dentro_da_janela():
             try:
-                prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])))
                 janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
-                return bool(prox and prox[1] <= janela)
+                prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])),
+                                             depois_min=janela)
+                if not prox:
+                    self._diag(t, "fora do horário: nenhum horário para hoje "
+                                  "(confira os dias da semana do trajeto)")
+                    return False
+                if prox[1] > janela:
+                    self._diag(t, f"fora do horário: próximo às {prox[0]:%H:%M} "
+                                  f"(faltam {prox[1]:.0f} min; janela {janela:.0f} min)")
+                    return False
+                return True
             except Exception:
                 return False
 
@@ -1005,11 +1014,12 @@ class Motor:
             if len(onibus) >= 3:
                 break
 
-        # está "acontecendo agora"? Se o ponto estiver além do limite, não
-        # destaca — só mostra o trajeto em cinza.
+        # destaca o próximo ônibus que vai passar no ponto indo ao destino,
+        # INDEPENDENTE da janela de horário (a janela só controla os avisos).
+        # Se o ponto estiver além do limite, não destaca — só cinza.
         agora_bool = dentro_da_janela()
         bus_id, bus_ids = None, []
-        if agora_bool and not longe:
+        if not longe:
             bus_ids = [b["id"] for b in onibus]
             if onibus:
                 bus_id = onibus[0]["id"]
@@ -1065,8 +1075,12 @@ class Motor:
                 if time.time() - ts > 6 * 3600:
                     self.avisos.pop(chave, None)
 
-    def _proximo_horario(self, trajeto, agora):
-        """Próximo horário do trajeto (datetime, minutos restantes) ou None."""
+    def _proximo_horario(self, trajeto, agora, depois_min=5):
+        """Próximo horário do trajeto (datetime, minutos restantes) ou None.
+
+        `depois_min` é a tolerância depois do horário (para o trajeto continuar
+        "ativo" enquanto o ônibus ainda está chegando).
+        """
         try:
             if agora.weekday() not in [int(d) for d in (trajeto.get("dias") or list(range(7)))]:
                 return None
@@ -1079,7 +1093,7 @@ class Motor:
                 continue
             dt = agora.replace(hour=m // 60, minute=m % 60, second=0, microsecond=0)
             diff = (dt - agora).total_seconds() / 60.0
-            if diff >= -5 and (melhor is None or diff < melhor[1]):
+            if diff >= -depois_min and (melhor is None or diff < melhor[1]):
                 melhor = (dt, diff)
         return melhor
 
@@ -1092,7 +1106,7 @@ class Motor:
             if not t.get("ativo", True):
                 continue
             chave = str(t.get("id"))
-            prox = self._proximo_horario(t, agora)
+            prox = self._proximo_horario(t, agora, depois_min=janela)
             if not prox or prox[1] > janela:
                 # saiu da janela: encerra o rastreio automático desse trajeto
                 if chave in self.rastreios:
