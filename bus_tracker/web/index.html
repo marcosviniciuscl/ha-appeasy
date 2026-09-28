@@ -8,86 +8,104 @@
 <link rel="stylesheet" href="vendor/leaflet.css">
 <style>
   :root{
-    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --linha:#2a2f3a;
-    --txt:#e8eaf0; --txt2:#9aa3b2; --acento:#f5a524; --ok:#37b169; --erro:#e5484d;
-    --azul:#3d7dff;
-    --hdr:52px; --nav:60px;
-    --hdr-bg:rgba(15,17,21,.86); --nav-bg:rgba(15,17,21,.95);
+    --bg:#0e1014; --card:#171a21; --card2:#1e222b; --linha:rgba(255,255,255,.09);
+    --txt:#e9ecf2; --txt2:#98a2b3; --acento:#f5a524; --azul:#3d7dff; --ok:#37b169; --erro:#e5484d;
+    --panel:rgba(20,23,29,.82); --hdr-bg:rgba(14,16,20,.78); --nav-bg:rgba(14,16,20,.94);
+    --hdr:54px; --nav:62px; --r:16px;
   }
   @media (prefers-color-scheme: light){
-    :root{ --bg:#f4f5f7; --card:#fff; --card2:#f0f1f4; --linha:#dde0e6;
-           --txt:#12151a; --txt2:#5c6472;
-           --hdr-bg:rgba(244,245,247,.9); --nav-bg:rgba(244,245,247,.96); }
+    :root{ --bg:#eef1f5; --card:#fff; --card2:#f3f4f7; --linha:rgba(0,0,0,.08);
+           --txt:#12151a; --txt2:#5c6472; --panel:rgba(255,255,255,.86);
+           --hdr-bg:rgba(255,255,255,.8); --nav-bg:rgba(255,255,255,.95); }
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
   body{background:var(--bg);color:var(--txt);
-       font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       font:15px/1.45 "SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
        -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  svg.ic{width:20px;height:20px;fill:currentColor;display:block}
+  .glass{background:var(--panel);backdrop-filter:blur(18px) saturate(140%);
+         -webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid var(--linha)}
 
-  /* ---------- barra superior ---------- */
-  header{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;gap:10px;
-         padding:calc(8px + env(safe-area-inset-top)) 14px 8px;
-         background:var(--hdr-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  /* ---------- topo ---------- */
+  header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;gap:10px;
+         padding:calc(8px + env(safe-area-inset-top)) 16px 8px;background:var(--hdr-bg);
+         backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
          border-bottom:1px solid var(--linha)}
-  header .logo{width:30px;height:30px;border-radius:9px;background:var(--acento);display:grid;place-items:center;
-               color:#20160a;font-weight:700;font-size:15px;flex:0 0 auto}
-  header h1{font-size:15.5px;margin:0;font-weight:650;letter-spacing:-.2px}
-  header .sub{font-size:11.5px;color:var(--txt2);max-width:50vw;overflow:hidden;
-              text-overflow:ellipsis;white-space:nowrap}
-  header .dir{margin-left:auto;text-align:right;font-size:11px;color:var(--txt2)}
-  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .brand .logo{width:32px;height:32px;border-radius:10px;background:var(--acento);color:#20160a;
+               display:grid;place-items:center;flex:0 0 auto;box-shadow:0 3px 10px rgba(245,165,36,.35)}
+  .brand .logo svg{width:20px;height:20px}
+  .brand h1{font-size:15.5px;margin:0;font-weight:650;letter-spacing:-.2px}
+  .brand .sub{font-size:11.5px;color:var(--txt2);max-width:48vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .status{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:middle}
   .dot.off{background:var(--erro)}
 
-  /* ---------- navegação inferior ---------- */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;
-      background:var(--nav-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      border-top:1px solid var(--linha);padding-bottom:env(safe-area-inset-bottom)}
-  nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;
-             color:var(--txt2);font:600 10.5px/1 inherit;padding:9px 2px 7px;cursor:pointer}
-  nav button .ic{font-size:20px;line-height:1}
-  nav button.on{color:var(--acento)}
-
-  main{padding:calc(var(--hdr) + env(safe-area-inset-top) + 10px) 12px
-                calc(var(--nav) + env(safe-area-inset-bottom) + 20px)}
-  section{display:none}
-  section.on{display:block}
-
   /* ---------- mapa em tela cheia ---------- */
+  #s-mapa{display:none}
   #s-mapa.on{position:fixed;inset:0;z-index:1;display:block}
   #mapa{position:absolute;inset:0;background:#20242c}
-  .mapa-top{position:absolute;z-index:20;left:10px;right:10px;
-            top:calc(var(--hdr) + env(safe-area-inset-top) + 10px);
-            display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .sheet{position:absolute;z-index:25;left:10px;right:10px;
-         bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px);
-         background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:14px;
-         box-shadow:0 10px 34px rgba(0,0,0,.45);max-height:56vh;overflow:auto;animation:sobe .18s ease-out}
-  @keyframes sobe{from{transform:translateY(14px);opacity:.4}to{transform:none;opacity:1}}
-  .sheet h2{font-size:14.5px;margin:0 0 8px;font-weight:650;display:flex;align-items:center;gap:8px}
-  .fab{width:44px;height:44px;flex:0 0 auto;border-radius:50%;background:var(--card);border:1px solid var(--linha);
-       color:var(--txt);font-size:19px;display:grid;place-items:center;box-shadow:0 3px 12px rgba(0,0,0,.4);cursor:pointer}
-  .fab.acento{background:var(--acento);color:#20160a;border-color:var(--acento)}
+  .leaflet-container{background:#20242c;font:inherit}
+  .leaflet-control-attribution{font-size:9.5px}
+  .leaflet-bottom{bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px)}
+  .map-pills{position:absolute;z-index:22;left:14px;right:14px;
+             top:calc(var(--hdr) + env(safe-area-inset-top) + 10px);display:flex;gap:8px}
+  .map-controls{position:absolute;z-index:22;right:14px;
+                top:calc(var(--hdr) + env(safe-area-inset-top) + 54px);
+                display:flex;gap:8px}
 
-  /* ---------- marcador de ônibus ---------- */
-  .busmark{position:relative;width:0;height:0}
-  .busmark .b{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;
-              background:var(--acento);color:#20160a;display:grid;place-items:center;border:2px solid #fff;
-              box-shadow:0 2px 8px rgba(0,0,0,.45)}
-  .busmark.parado .b{background:#8a94a6;color:#0f1115}
-  .busmark.sel .b{background:var(--azul);color:#fff;border-color:#fff}
-  .busmark svg{width:19px;height:19px;fill:currentColor}
-  .busmark .l{position:absolute;top:17px;left:50%;transform:translateX(-50%);background:#20160a;color:#fff;
-              font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
-              border:1px solid #ffffff55}
+  /* ---------- botões flutuantes / pills ---------- */
+  .fab{width:46px;height:46px;flex:0 0 auto;border-radius:14px;display:grid;place-items:center;cursor:pointer;
+       color:var(--txt);box-shadow:0 6px 18px rgba(0,0,0,.32);transition:transform .12s ease,background .15s}
+  .fab:active{transform:scale(.94)}
+  .fab.acento{background:var(--acento);color:#20160a;border-color:transparent}
+  .pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;border-radius:999px;
+        padding:7px 12px;color:var(--txt);box-shadow:0 4px 14px rgba(0,0,0,.22)}
+  .pill.ok{color:var(--ok)}
+  .meta{font-size:12.5px;color:var(--txt2)}
 
-  /* ---------- cartões/forms ---------- */
-  .card{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:14px;margin-bottom:12px}
+  /* ---------- painel lateral de detalhes (mapa) ---------- */
+  .detail{position:absolute;z-index:25;left:12px;right:12px;
+          bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px);
+          border-radius:20px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.5);
+          max-height:56vh;overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1)}
+  @keyframes sobe{from{transform:translateY(16px);opacity:.3}to{transform:none;opacity:1}}
+  .detail h2{font-size:15px;margin:0 0 10px;font-weight:680;display:flex;align-items:center;gap:8px}
+  .detail .linha-titulo{display:flex;align-items:center;gap:10px}
+  .badge-linha{width:34px;height:34px;border-radius:11px;background:var(--azul);color:#fff;display:grid;
+               place-items:center;font-weight:700;font-size:12px;flex:0 0 auto}
+  .prox-parada{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--linha)}
+  .prox-parada .bola{width:9px;height:9px;border-radius:50%;background:var(--azul);flex:0 0 auto}
+  .prox-parada .eta{margin-left:auto;font-weight:650;color:var(--txt)}
+  .btn-x{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--card2);
+         border:1px solid var(--linha);color:var(--txt);cursor:pointer;flex:0 0 auto}
+
+  /* ---------- menus (rail desktop + nav mobile) ---------- */
+  .tab-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:none;
+           color:var(--txt2);cursor:pointer;font:inherit;transition:.15s}
+  .tab-btn.on{color:var(--acento)}
+  .rail{display:none}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:space-around;
+      padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);
+      backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+      border-top:1px solid var(--linha)}
+  nav .tab-btn{flex:1;flex-direction:column;gap:3px;font:600 10.5px/1 inherit;padding:9px 2px 7px}
+  nav .tab-btn .ic{width:22px;height:22px}
+  nav .tab-btn.on{color:var(--acento)}
+
+  /* ---------- conteúdo ---------- */
+  main{padding:calc(var(--hdr) + env(safe-area-inset-top) + 12px) 14px
+                calc(var(--nav) + env(safe-area-inset-bottom) + 22px)}
+  main section{display:none}
+  main section.on{display:block}
+
+  .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:15px;margin-bottom:12px}
   .card h2{font-size:14px;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
   .card h2 .tag{margin-left:auto;font-size:12px;color:var(--txt2);font-weight:500}
   label.f{display:block;font-size:12.5px;color:var(--txt2);margin:10px 0 4px}
   input,select,textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--linha);
-        border-radius:10px;padding:11px 12px;font-size:16px;font-family:inherit}
+        border-radius:11px;padding:11px 12px;font-size:16px;font-family:inherit}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -95,7 +113,7 @@
         border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer;user-select:none}
   .chip.on{background:rgba(245,165,36,.16);border-color:var(--acento);color:var(--txt)}
   .chip input{display:none}
-  button.bt{border:none;border-radius:10px;padding:11px 15px;font-size:14px;font-weight:600;cursor:pointer;
+  button.bt{border:none;border-radius:11px;padding:11px 15px;font-size:14px;font-weight:600;cursor:pointer;
             background:var(--acento);color:#20160a}
   button.bt.sec{background:var(--card2);color:var(--txt);border:1px solid var(--linha)}
   button.bt.del{background:transparent;color:var(--erro);border:1px solid var(--linha);padding:7px 11px;font-size:12.5px}
@@ -106,75 +124,112 @@
   .item .nome{font-weight:600}
   .item .meta{font-size:12px;color:var(--txt2)}
   .item .dir{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-  .pill{font-size:11.5px;border-radius:999px;padding:5px 10px;background:var(--hdr-bg);border:1px solid var(--linha);
-        color:var(--txt);backdrop-filter:blur(8px);white-space:nowrap}
-  .pill.ok{color:var(--ok);border-color:rgba(55,177,105,.4)}
-  .meta{font-size:12.5px;color:var(--txt2)}
   .log{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:260px;overflow:auto}
   .log div{padding:3px 0;border-bottom:1px solid var(--linha);color:var(--txt2)}
   .log b{color:var(--txt);font-weight:500}
   .vazio{color:var(--txt2);font-size:13.5px;text-align:center;padding:14px}
-  .aviso{font-size:13px;border-radius:10px;padding:10px 12px;margin-top:10px;display:none}
+  .aviso{font-size:13px;border-radius:11px;padding:10px 12px;margin-top:10px;display:none}
   .aviso.ok{background:rgba(55,177,105,.14);color:var(--ok);display:block}
   .aviso.erro{background:rgba(229,72,77,.14);color:var(--erro);display:block}
-  .leaflet-container{background:#20242c}
-  .leaflet-control-attribution{font-size:9.5px}
-  /* mantém zoom/atribuição acima da barra inferior */
-  .leaflet-bottom{bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px)}
 
-  /* ---------- telas maiores (desktop/tablet) ---------- */
-  @media (min-width: 820px){
-    main{max-width:1040px;margin:0 auto}
-    header{padding-left:max(14px, calc(50% - 520px));padding-right:max(14px, calc(50% - 520px))}
-    .mapa-top{left:0;right:0;margin:0 auto;max-width:1040px;width:calc(100% - 24px)}
-    .sheet{left:0;right:0;margin-left:auto;margin-right:auto;max-width:600px}
-    nav{justify-content:center;gap:36px}
-    nav button{flex:0 0 auto;min-width:96px}
+  /* marcador de ônibus */
+  .busmark{position:relative;width:0;height:0}
+  .busmark .b{position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;
+              background:var(--acento);color:#20160a;display:grid;place-items:center;border:2px solid #fff;
+              box-shadow:0 3px 10px rgba(0,0,0,.5)}
+  .busmark.parado .b{background:#8a94a6;color:#0f1115}
+  .busmark.sel .b{background:var(--azul);color:#fff;border-color:#fff}
+  .busmark svg{width:19px;height:19px;fill:currentColor}
+  .busmark .l{position:absolute;top:17px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
+              font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
+              border:1px solid rgba(255,255,255,.28)}
+
+  /* ---------- desktop ---------- */
+  @media (min-width: 900px){
+    /* o mapa fica sempre visível; o painel de opções abre por cima */
+    #s-mapa{position:fixed;inset:0;z-index:1;display:block}
+    main{position:fixed;z-index:40;left:104px;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
+         bottom:18px;width:min(460px, calc(100vw - 560px));margin:0;padding:16px;overflow:auto;
+         border-radius:22px;box-shadow:0 24px 60px rgba(0,0,0,.45);display:none}
+    body:not([data-tab="mapa"]) main{display:block}
+    nav{display:none}
+
+    /* trilha de navegação vertical */
+    .rail{position:fixed;z-index:45;left:16px;top:50%;transform:translateY(-50%);display:flex;
+          flex-direction:column;gap:4px;padding:8px;border-radius:20px;
+          box-shadow:0 18px 46px rgba(0,0,0,.4)}
+    .rail .tab-btn{flex-direction:column;gap:3px;width:62px;height:56px;border-radius:14px;
+                   font:600 9.5px/1 inherit}
+    .rail .tab-btn .ic{width:22px;height:22px}
+    .rail .tab-btn.on{background:var(--acento);color:#20160a}
+
+    .map-pills{left:104px;right:auto}
+    .map-controls{flex-direction:column;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
+                  right:18px;left:auto}
+    .detail{left:auto;right:18px;top:calc(var(--hdr) + env(safe-area-inset-top) + 200px);
+            bottom:auto;width:370px;max-height:calc(100vh - 300px)}
+    .leaflet-bottom{bottom:10px}
   }
 </style>
 </head>
-<body>
+<body data-tab="mapa">
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-map" viewBox="0 0 24 24"><path d="M9,3.5L15,6L20,3.5V16.5L15,19L9,16.5L4,19V6L9,3.5M9,5.7L5,7.6V16.1L9,14.2V5.7M15,7.2L10,5.2V15.8L15,17.8V7.2M19,7.3L16,8.7V17.9L19,16.5V7.3Z"/></symbol>
+  <symbol id="ic-bus" viewBox="0 0 24 24"><path d="M18,11H6V6H18M16.5,17A1.5,1.5 0 0,1 15,15.5A1.5,1.5 0 0,1 16.5,14A1.5,1.5 0 0,1 18,15.5A1.5,1.5 0 0,1 16.5,17M7.5,17A1.5,1.5 0 0,1 6,15.5A1.5,1.5 0 0,1 7.5,14A1.5,1.5 0 0,1 9,15.5A1.5,1.5 0 0,1 7.5,17M4,16C4,16.88 4.39,17.67 5,18.22V20A1,1 0 0,0 6,21H7A1,1 0 0,0 8,20V19H16V20A1,1 0 0,0 17,21H18A1,1 0 0,0 19,20V18.22C19.61,17.67 20,16.88 20,16V6C20,2.5 16.42,2 12,2C7.58,2 4,2.5 4,6V16Z"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21H14Z"/></symbol>
+  <symbol id="ic-account" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></symbol>
+  <symbol id="ic-cog" viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></symbol>
+  <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></symbol>
+  <symbol id="ic-marker" viewBox="0 0 24 24"><path d="M12,2C8.13,2 5,5.13 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9C19,5.13 15.87,2 12,2M12,11.5A2.5,2.5 0 1,1 12,6.5A2.5,2.5 0 0,1 12,11.5Z"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></symbol>
+</svg>
+
 <header>
-  <div class="logo">🚌</div>
-  <div>
-    <h1>Bus Tracker</h1>
-    <div class="sub" id="hdr-sub">carregando…</div>
+  <div class="brand">
+    <span class="logo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg></span>
+    <div style="min-width:0">
+      <h1>Bus Tracker</h1>
+      <div class="sub" id="hdr-sub">carregando…</div>
+    </div>
   </div>
-  <div class="dir">
-    <div><span class="dot off" id="dot"></span><span id="hdr-ha">HA</span></div>
-    <div id="hdr-ciclo">—</div>
+  <div class="status">
+    <span class="pill glass"><span class="dot off" id="dot"></span><span id="hdr-ha">HA</span></span>
+    <span class="pill glass" id="hdr-ciclo">—</span>
   </div>
 </header>
 
-<nav>
-  <button data-t="mapa" class="on"><span class="ic">🗺️</span>Mapa</button>
-  <button data-t="onibus"><span class="ic">🚌</span>Ônibus</button>
-  <button data-t="avisos"><span class="ic">🔔</span>Avisos</button>
-  <button data-t="pessoas"><span class="ic">👤</span>Pessoas</button>
-  <button data-t="ajustes"><span class="ic">⚙️</span>Ajustes</button>
-</nav>
+<aside class="rail glass">
+  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
+  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
+  <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
+  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
+  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
+</aside>
+
+<!-- ============================= MAPA ============================= -->
+<section id="s-mapa" class="on">
+  <div id="mapa"></div>
+  <div class="map-pills">
+    <span class="pill glass" id="m-onibus">0 ônibus</span>
+    <span class="pill glass" id="m-pessoas">0 pessoas</span>
+  </div>
+  <div class="map-controls">
+    <button class="fab glass" onclick="carregarMapa(true)" title="Atualizar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-refresh"/></svg></button>
+    <button class="fab glass" onclick="mostrarTudo()" title="Mostrar tudo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-eye"/></svg></button>
+    <button class="fab glass" onclick="togglePontos()" title="Pontos de embarque"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-marker"/></svg></button>
+  </div>
+  <aside class="detail glass" id="rota-info" style="display:none"></aside>
+  <aside class="detail glass" id="pontos-sheet" style="display:none">
+    <h2>Pontos de embarque
+      <button class="btn-x" style="margin-left:auto" onclick="togglePontos()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
+    </h2>
+    <div id="lista-pontos"></div>
+  </aside>
+</section>
 
 <main>
-  <!-- ============================= MAPA ============================= -->
-  <section id="s-mapa" class="on">
-    <div id="mapa"></div>
-    <div class="mapa-top">
-      <span class="pill" id="m-onibus">0 ônibus</span>
-      <span class="pill" id="m-pessoas">0 pessoas</span>
-      <span style="flex:1"></span>
-      <button class="fab" id="fab-pontos" onclick="togglePontos()" title="Pontos de embarque">📍</button>
-      <button class="fab" onclick="carregarMapa(true)" title="Atualizar">⟳</button>
-      <button class="fab" onclick="mostrarTudo()" title="Mostrar tudo">👁</button>
-    </div>
-    <div class="sheet" id="rota-info" style="display:none"></div>
-    <div class="sheet" id="pontos-sheet" style="display:none">
-      <h2>Pontos de embarque
-        <button class="bt sec sm" style="margin-left:auto" onclick="togglePontos()">Fechar</button>
-      </h2>
-      <div id="lista-pontos"></div>
-    </div>
-  </section>
-
   <!-- ============================ ÔNIBUS ============================ -->
   <section id="s-onibus">
     <div class="card">
@@ -288,6 +343,14 @@
   </section>
 </main>
 
+<nav>
+  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
+  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
+  <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
+  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
+  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
+</nav>
+
 <script src="vendor/leaflet.js"></script>
 <script>
 /* O painel roda dentro do ingress do HA (/api/hassio_ingress/<token>/),
@@ -302,15 +365,16 @@ let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
 
 /* ------------------------------------------------ navegação */
-document.querySelectorAll("nav button").forEach(b=>{
-  b.onclick = ()=>{
-    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
-    document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
-    b.classList.add("on");
-    document.getElementById("s-"+b.dataset.t).classList.add("on");
-    if (b.dataset.t==="mapa") setTimeout(()=>mapa && mapa.invalidateSize(), 60);
-  };
-});
+function trocarAba(t){
+  document.body.dataset.tab = t;
+  document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("on", x.dataset.t===t));
+  document.querySelectorAll("main section").forEach(x=>x.classList.toggle("on", x.id==="s-"+t));
+  const secMapa = document.getElementById("s-mapa");
+  if (t==="mapa"){ secMapa.classList.add("on"); setTimeout(()=>mapa && mapa.invalidateSize(), 80); }
+  else secMapa.classList.remove("on");   // no desktop o CSS mantém o mapa visível
+  if (t==="onibus") carregarOnibus();
+}
+document.querySelectorAll(".tab-btn").forEach(b=>{ b.onclick = ()=>trocarAba(b.dataset.t); });
 
 function msg(id, texto, ok=true){
   const el = document.getElementById(id);
@@ -432,7 +496,6 @@ async function carregarMapa(primeiro){
   const sel = new Set((est.mapa.onibus||[]).map(norm));
   const exibidos = (d.onibus||[]).filter(b=> sel.size===0 || sel.has(norm(b.linha)));
 
-  // Ônibus: atualiza em vez de recriar (evita piscar)
   const vistos = new Set();
   exibidos.forEach(b=>{
     vistos.add(b.id);
@@ -454,7 +517,6 @@ async function carregarMapa(primeiro){
     if (!vistos.has(id)){ camadaOnibus.removeLayer(mkOnibus[id].mk); delete mkOnibus[id]; }
   });
 
-  // Demais camadas (recriadas a cada atualização)
   camadaOutros.clearLayers();
   (d.lugares||[]).forEach(p=>{
     camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:3, fillColor:"#3d7dff", fillOpacity:.35})
@@ -483,7 +545,7 @@ async function carregarMapa(primeiro){
 }
 
 /* ------------------------------------------------ rota do ônibus selecionado */
-const nomeCurto = s => { s = String(s||""); return s.length>46 ? s.slice(0,45).trim()+"…" : s; };
+const nomeCurto = s => { s = String(s||""); return s.length>42 ? s.slice(0,41).trim()+"…" : s; };
 const textoEta = p => p.passou ? "já passou" : (p.prev ? esc(p.prev) : (p.eta_min!=null ? "~"+Math.round(p.eta_min)+" min" : "?"));
 function pintarSelecao(){
   Object.values(mkOnibus).forEach(e=> e.mk.setIcon(busIcon(e.b, e.b.id===onibusSel)));
@@ -499,11 +561,10 @@ async function desenharRotaSel(){
   if (!onibusSel){ rotaSelLayer.clearLayers(); return; }
   let d;
   try { d = await api("/api/onibus/"+encodeURIComponent(onibusSel)); }
-  catch(e){ return; }        // mantém a rota antiga se a rede falhar
+  catch(e){ return; }
   if (!d || !d.ok){ limparSelecao(); return; }
   const o = d.onibus||{}, paradas = d.paradas||[];
 
-  // Monta tudo num grupo à parte e só troca quando estiver pronto (sem piscar)
   const grupo = L.layerGroup();
   let bounds = null;
   if ((d.rota||[]).length > 1){
@@ -520,20 +581,24 @@ async function desenharRotaSel(){
   grupo.eachLayer(l=>rotaSelLayer.addLayer(l));
 
   const prox = paradas.filter(p=>!p.passou)
-    .sort((a,b)=>(a.eta_min==null?1e9:a.eta_min)-(b.eta_min==null?1e9:b.eta_min)).slice(0,5);
+    .sort((a,b)=>(a.eta_min==null?1e9:a.eta_min)-(b.eta_min==null?1e9:b.eta_min)).slice(0,6);
   const info = document.getElementById("rota-info");
   const extras = [];
-  if (o.sentido) extras.push("Sentido: "+esc(o.sentido));
-  if (o.destino) extras.push("Destino: "+esc(o.destino));
+  if (o.sentido) extras.push(esc(o.sentido));
   if (o.acessivel===true) extras.push("♿ acessível");
-  if (o.previsao) extras.push(esc(o.previsao));
   info.style.display = "block";
-  info.innerHTML = `<h2>Linha ${esc(o.linha)} · veículo ${esc(o.id)}
-      <button class="bt sec sm" style="margin-left:auto" onclick="limparSelecao()">Fechar</button></h2>
-    <div class="meta">${extras.join(" · ")}</div>` +
-    (prox.length ? `<div class="meta" style="margin-top:8px;font-weight:600">Próximas paradas</div>` +
-      prox.map(p=>`<div class="meta">• ${esc(nomeCurto(p.nome))} — ${textoEta(p)} <span style="opacity:.6">(${fmtDist(p.dist_m)})</span></div>`).join("")
-      : '<div class="meta">Sem paradas previstas.</div>');
+  info.innerHTML = `
+    <h2><span class="badge-linha">${esc(o.linha)}</span>
+      <span>Linha ${esc(o.linha)} · veículo ${esc(o.id)}</span>
+      <button class="btn-x" style="margin-left:auto" onclick="limparSelecao()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
+    </h2>
+    <div class="meta">${extras.join(" · ")}</div>
+    ${o.destino ? `<div class="meta" style="margin-top:4px">Destino: <b style="color:var(--txt)">${esc(o.destino)}</b></div>` : ""}
+    ${prox.length ? `<div class="meta" style="margin:10px 0 2px;font-weight:650;color:var(--txt)">Próximas paradas</div>` +
+      prox.map(p=>`<div class="prox-parada"><span class="bola"></span>
+        <span style="min-width:0">${esc(nomeCurto(p.nome))}<br><span class="meta">${fmtDist(p.dist_m)}</span></span>
+        <span class="eta">${textoEta(p)}</span></div>`).join("")
+      : '<div class="meta" style="margin-top:8px">Sem paradas previstas.</div>'}`;
   if (bounds && !rotaAjustada){ mapa.fitBounds(bounds, {padding:[40,40]}); rotaAjustada = true; }
 }
 function limparSelecao(){
@@ -799,7 +864,7 @@ async function laçoMapa(){
     renderLog(d); renderRastreios(d);
   }catch(e){}
 }
-setInterval(()=>{ if (document.getElementById("s-mapa").classList.contains("on")) carregarMapa(); }, 12000);
+setInterval(()=>carregarMapa(), 12000);
 setInterval(()=>{ if (document.getElementById("s-onibus").classList.contains("on")) carregarOnibus(); }, 12000);
 setInterval(laçoMapa, 15000);
 setInterval(carregarEstado, 60000);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.27.0
+
+- **Desktop**: o mapa também ocupa a tela toda e as opções abrem num painel
+  lateral ao lado de uma trilha de navegação vertical (sem barra inferior).
+- Ícones **SVG** no lugar dos emojis (navegação, ações do mapa e topo).
+- Quando um ônibus é selecionado, a rota e as **informações de cada ponto**
+  aparecem num painel lateral sobre o mapa (desktop) ou em bottom sheet (mobile).
+- Visual mais moderno: painéis com desfoque (glass), cantos e sombras suaves.
+
 ## 0.26.0
 
 - **Interface mobile**: mapa em tela cheia, barra de navegação inferior e
