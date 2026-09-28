@@ -103,8 +103,9 @@ class Motor:
             return
         b = (info.get("onibus") or [None])
         b = b[0] if b else None
+        tipo = info.get("tipo_horario") or "ponto"
         sig = (f"{info['ponto']['nome']}|{b.get('id') if b else '-'}|"
-               f"{b.get('eta_min') if b else '-'}|{info['agora']}|{info.get('longe')}")
+               f"{b.get('eta_min') if b else '-'}|{info['agora']}|{info.get('longe')}|{tipo}")
         if self._trajeto_log.get(tid) == sig:
             return
         self._trajeto_log[tid] = sig
@@ -113,13 +114,14 @@ class Motor:
         longe = (" · LONGE: ponto a %d m (limite %d m)" %
                  (info["ponto"]["dist_m"], info.get("dist_max_m") or 0)) if info.get("longe") else ""
         if b:
-            bus_txt = (f"próximo ônibus {b.get('id')} (linha {b.get('linha')}, "
+            bus_txt = (f"ônibus {b.get('id')} (linha {b.get('linha')}, "
                        f"ETA {b.get('eta_min')} min, {b.get('risco')})")
         else:
-            bus_txt = "nenhum ônibus indo ao ponto agora"
+            bus_txt = "nenhum ônibus que atenda agora"
         self.registrar(
-            f"Trajeto {tid} · {info['pessoa']}: destino {dest} → ponto {info['ponto']['nome']} "
-            f"({info['ponto']['dist_m']} m a pé) · {bus_txt}{janela}{longe}",
+            f"Trajeto {tid} · {info['pessoa']} [{tipo}]: destino {dest} → ponto "
+            f"{info['ponto']['nome']} ({info['ponto']['dist_m']} m a pé) · {bus_txt}"
+            f"{janela}{longe}",
             "warning" if info.get("longe") else "info")
 
     # ---------------------------------------------------------------- ciclo
@@ -889,6 +891,9 @@ class Motor:
                 bb["eta_min"] = round((d / 1000) / vel * 60, 1)
                 bb["s_alvo"] = s_p
                 bb["trecho"] = self._trecho(rota, b["s"], s_p)
+                # tempo de viagem do ponto de embarque até o destino
+                bb["tempo_viagem_min"] = round(
+                    (max(0.0, s_dest - s_p) / 1000.0) / vel * 60, 1)
                 saida.append(bb)
             saida.sort(key=lambda x: x["dist_ponto"])
             return saida
@@ -958,6 +963,16 @@ class Motor:
         ref = pos_pessoa or self.posicao_casa()
         margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
         limite = float(self.cfg["ajustes"].get("dist_max_embarque_m", 2000) or 0)
+        tipo = str(t.get("tipo_horario") or "ponto").lower()
+        if tipo not in ("ponto", "liberado", "chegar"):
+            tipo = "ponto"
+        janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
+        try:
+            prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])),
+                                         depois_min=janela)
+        except Exception:
+            prox = None
+        alvo_min = prox[1] if prox else None   # minutos até o horário (None = sem horário hoje)
         destino = self._destino_trajeto(t.get("destino") or {}, linhas)
         destino_pos = None
         if destino and destino.get("lat") is not None and destino.get("lon") is not None:
@@ -1007,6 +1022,7 @@ class Motor:
             for b in candidatos:
                 eta = b.get("eta_min")
                 risco = self._risco(ponto["tempo_min"], eta, margem)
+                viagem = b.get("tempo_viagem_min")
                 coletados.append({
                     "linha": self.sigla_exib(sigla),
                     "ponto": ponto,
@@ -1014,6 +1030,9 @@ class Motor:
                         "id": b["id"], "linha": self.sigla_exib(sigla),
                         "eta_min": eta, "dist_m": round(b.get("dist_ponto") or 0),
                         "risco": risco, "trecho": b.get("trecho") or [],
+                        "tempo_viagem_min": viagem,
+                        "sair_min": round(eta - ponto["tempo_min"] - margem, 1) if eta is not None else None,
+                        "chega_min": round(eta + (viagem or 0), 1) if eta is not None else None,
                         "tempo_total_min": eta if (eta is not None and risco != "perdeu") else None,
                     },
                 })
@@ -1023,6 +1042,7 @@ class Motor:
                 "linhas": [self.sigla_exib(s) for s in linhas],
                 "linha": linha_principal,
                 "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
+                "tipo_horario": tipo, "alvo_min": alvo_min,
                 "pos": {"lat": origem[0], "lon": origem[1]} if origem
                        else {"lat": ponto["lat"], "lon": ponto["lon"]},
                 "destino": destino,
@@ -1033,61 +1053,94 @@ class Motor:
                 "onibus": onibus,
             }
 
-        def dentro_da_janela():
-            try:
-                janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
-                prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])),
-                                             depois_min=janela)
-                if not prox:
-                    self._diag(t, "fora do horário: nenhum horário para hoje "
-                                  "(confira os dias da semana do trajeto)")
-                    return False
-                if prox[1] > janela:
-                    self._diag(t, f"fora do horário: próximo às {prox[0]:%H:%M} "
-                                  f"(faltam {prox[1]:.0f} min; janela {janela:.0f} min)")
-                    return False
-                return True
-            except Exception:
-                return False
+        def _far(c):
+            return limite > 0 and (c["ponto"].get("dist_m") or 0) > limite
+
+        def _eta(c):
+            e = c["bus"].get("eta_min")
+            return e if e is not None else 1e9
+
+        def escolher():
+            """Escolhe o ônibus que faz sentido para o tipo de horário.
+
+            Devolve (coletado, motivo) — ou (None, motivo) quando não há um
+            ônibus que se encaixe.
+            """
+            if alvo_min is None:
+                return None, "sem horário para hoje"
+            if tipo == "ponto":
+                # horário = quando o ônibus passa no ponto
+                cands = [c for c in coletados if c["bus"]["eta_min"] is not None]
+                if not cands:
+                    return None, "sem ônibus"
+                perto = min(cands, key=lambda c: (abs(c["bus"]["eta_min"] - alvo_min), _far(c)))
+                if abs(perto["bus"]["eta_min"] - alvo_min) <= janela:
+                    return perto, f"passa no ponto ~{alvo_min:.0f} min do horário"
+                return None, (f"nenhum ônibus perto do horário "
+                              f"(mais próximo a {perto['bus']['eta_min']:.0f} min)")
+            if tipo == "liberado":
+                # horário = quando a pessoa fica livre; pega o PRÓXIMO ônibus
+                cands = [c for c in coletados if c["bus"]["eta_min"] is not None
+                         and c["bus"]["eta_min"] >= max(alvo_min, 0)
+                         and c["bus"]["risco"] != "perdeu"]
+                if not cands:
+                    return None, "nenhum ônibus depois de liberar que dê tempo"
+                return min(cands, key=lambda c: (_far(c), _eta(c))), "próximo depois de liberar"
+            # tipo == "chegar": horário = quando quer chegar no destino
+            cands = [c for c in coletados if c["bus"].get("chega_min") is not None
+                     and c["bus"]["chega_min"] <= alvo_min
+                     and c["bus"]["risco"] != "perdeu"]
+            if not cands:
+                return None, "nenhum ônibus chega no destino a tempo"
+            # o mais tardio que ainda chega a tempo (= sair o mais tarde possível)
+            return max(cands, key=lambda c: (not _far(c), c["bus"]["chega_min"])), \
+                   "último que ainda chega a tempo"
+
+        agora_bool = bool(prox and janela >= prox[1])
+        if alvo_min is None:
+            self._diag(t, "fora do horário: nenhum horário para hoje "
+                          "(confira os dias da semana do trajeto)")
+        elif not agora_bool:
+            self._diag(t, f"fora da janela: próximo às {prox[0]:%H:%M} "
+                          f"(faltam {prox[1]:.0f} min; janela {janela:.0f} min)")
 
         if not coletados:
-            # mantém o ponto de encontro fixo mesmo sem ônibus indo agora: o
-            # destaque aparece quando o próximo ônibus que passar nele vier.
+            # mantém o ponto de encontro fixo mesmo sem ônibus indo agora
             if pontos_linha:
                 sig_nome, ponto = min(pontos_linha, key=lambda x: x[1].get("dist_m") or 0)
                 longe = limite > 0 and (ponto.get("dist_m") or 0) > limite
-                info = montar(ponto, sig_nome, [], dentro_da_janela(), None, [], longe)
+                info = montar(ponto, sig_nome, [], agora_bool, None, [], longe)
                 self._log_trajeto(t, info)
                 return info
             self._log_trajeto(t, None)
             return None
 
-        # prefere pontos dentro do limite de caminhada; depois o menor ETA
-        coletados.sort(key=lambda x: (limite > 0 and (x["ponto"].get("dist_m") or 0) > limite,
-                                      x["bus"]["eta_min"] is None,
-                                      x["bus"]["eta_min"] if x["bus"]["eta_min"] is not None else 1e9))
-        melhor = coletados[0]
-        ponto = melhor["ponto"]
+        escolhido, motivo = escolher()
+        self._diag(t, f"tipo={tipo} alvo={alvo_min if alvo_min is None else round(alvo_min)}min "
+                      f"→ {motivo}")
+        ponto = escolhido["ponto"] if escolhido else min(
+            (c["ponto"] for c in coletados), key=lambda p: p.get("dist_m") or 0)
         longe = limite > 0 and (ponto.get("dist_m") or 0) > limite
+        # monta a lista de ônibus: o escolhido primeiro, o resto por ETA
         onibus, vistos = [], set()
-        for c in coletados:
-            if c["bus"]["id"] in vistos:
+        ordem = ([escolhido] if escolhido else []) + \
+                sorted(coletados, key=lambda c: (c["bus"]["eta_min"] is None, _eta(c)))
+        for c in ordem:
+            bid = c["bus"]["id"]
+            if bid in vistos:
                 continue
-            vistos.add(c["bus"]["id"])
+            vistos.add(bid)
             onibus.append(c["bus"])
             if len(onibus) >= 3:
                 break
 
-        # destaca o próximo ônibus que vai passar no ponto indo ao destino,
-        # INDEPENDENTE da janela de horário (a janela só controla os avisos).
-        # Se o ponto estiver além do limite, não destaca — só cinza.
-        agora_bool = dentro_da_janela()
         bus_id, bus_ids = None, []
-        if not longe:
-            bus_ids = [b["id"] for b in onibus]
-            if onibus:
-                bus_id = onibus[0]["id"]
-        info = montar(ponto, melhor["linha"], onibus, agora_bool, bus_id, bus_ids, longe)
+        if escolhido and not longe:
+            bus_id = escolhido["bus"]["id"]
+            bus_ids = [bus_id]
+        info = montar(ponto, escolhido["linha"] if escolhido else onibus[0]["linha"] if onibus else (linhas[0] if linhas else ""),
+                      onibus, agora_bool, bus_id, bus_ids, longe)
+        info["motivo"] = motivo
         self._log_trajeto(t, info)
         return info
 
@@ -1181,11 +1234,14 @@ class Motor:
             except Exception as e:
                 log.debug(f"trajeto {t.get('id')}: {e}")
                 continue
-            if not info or not info.get("onibus"):
+            bus_id = info.get("bus_id") if info else None
+            if not bus_id:
+                # nenhum ônibus que faça sentido agora: não rastreia
                 if chave in self.rastreios:
                     self.parar_rastreio(chave, aviso=False)
                 continue
-            b = info["onibus"][0]
+            b = next((x for x in info.get("onibus", []) if str(x.get("id")) == str(bus_id)),
+                     info["onibus"][0])
             if b.get("risco") in ("correr", "perdeu"):
                 aviso_chave = (t.get("id"), b["id"], "saida")
                 if time.time() - self.avisos.get(aviso_chave, 0) >= cooldown:

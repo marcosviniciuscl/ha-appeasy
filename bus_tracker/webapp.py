@@ -557,11 +557,15 @@ class Handler(BaseHTTPRequestHandler):
             lon = float(lon) if lon not in (None, "") else None
         except (TypeError, ValueError):
             lat = lon = None
+        tipo = str(t.get("tipo_horario") or "ponto").strip().lower()
+        if tipo not in ("ponto", "liberado", "chegar"):
+            tipo = "ponto"
         return {
             "id": str(t.get("id") or uuid.uuid4().hex[:8]),
             "ativo": bool(t.get("ativo", True)),
             "pessoa": str(t.get("pessoa") or "").strip(),
             "linhas": linhas,
+            "tipo_horario": tipo,
             "destino": {"cod": str(destino.get("cod") or "").strip(),
                         "nome": str(destino.get("nome") or "").strip(),
                         "lat": lat, "lon": lon},

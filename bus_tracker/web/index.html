@@ -407,8 +407,15 @@
         <input id="tr-destino" list="dl-destinos" placeholder="digite o ponto…" style="flex:1;min-width:160px">
         <button class="bt sec sm" type="button" onclick="marcarDestino()">Escolher no mapa</button>
       </div>
-      <label class="f">Horários do ônibus</label>
+      <label class="f">O horário informado é…</label>
+      <select id="tr-tipo" onchange="renderTipoHorario()">
+        <option value="ponto">Quando o ônibus passa no ponto</option>
+        <option value="liberado">Quando eu fico livre (pegar o próximo)</option>
+        <option value="chegar">Quando eu quero chegar no destino</option>
+      </select>
+      <label class="f" id="tr-horarios-lbl">Horários do ônibus</label>
       <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
+      <p class="hint" id="tr-tipo-hint"></p>
       <label class="f">Dias da semana</label>
       <div class="chips" id="tr-dias"></div>
       <div class="row">
@@ -747,9 +754,10 @@ function renderTrajetos(){
     return `<div class="grupo-titulo">${esc(nome)}</div>` + porPessoa[pid].map(t=>{
       const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
       const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
+      const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
       return `<div class="item"><div>
         <div class="nome">${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
-        <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
+        <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(tipoTxt)} · ${esc(dias)}</div>
       </div><div class="dir">
         <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
         <button class="bt sec sm" onclick="editarTrajeto('${t.id}')">Editar</button>
@@ -758,6 +766,21 @@ function renderTrajetos(){
     }).join("");
   }).join("");
 }
+function renderTipoHorario(){
+  const t = document.getElementById("tr-tipo").value;
+  const lbl = document.getElementById("tr-horarios-lbl");
+  const hint = document.getElementById("tr-tipo-hint");
+  if (t==="liberado"){
+    lbl.textContent = "Horário que você fica livre";
+    hint.textContent = "O app pega o próximo ônibus no ponto mais próximo depois desse horário.";
+  } else if (t==="chegar"){
+    lbl.textContent = "Horário que você quer chegar no destino";
+    hint.textContent = "O app procura o melhor horário para você sair e chegar a tempo.";
+  } else {
+    lbl.textContent = "Horários do ônibus (passa no ponto)";
+    hint.textContent = "O horário em que o ônibus passa no seu ponto de embarque.";
+  }
+}
 function novoTrajeto(){
   editandoTrajeto = null;
   document.getElementById("tr-titulo").textContent = "Novo trajeto";
@@ -765,12 +788,14 @@ function novoTrajeto(){
   document.getElementById("tr-linha").value = "";
   document.getElementById("tr-destino").value = "";
   document.getElementById("tr-horarios").value = "";
+  document.getElementById("tr-tipo").value = "ponto";
   document.getElementById("tr-ativo").checked = true;
   selLinhasTrajeto = new Set();
   destinoEscolhido = null;
   destinosLinha = [];
   document.getElementById("dl-destinos").innerHTML = "";
   renderLinhasTrajeto();
+  renderTipoHorario();
   renderDiasTrajeto([0,1,2,3,4]);
 }
 function editarTrajeto(id){
@@ -782,10 +807,12 @@ function editarTrajeto(id){
   document.getElementById("tr-linha").value = "";
   document.getElementById("tr-destino").value = (t.destino && t.destino.nome) || "";
   document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
+  document.getElementById("tr-tipo").value = t.tipo_horario || "ponto";
   document.getElementById("tr-ativo").checked = !!t.ativo;
   selLinhasTrajeto = new Set(linhas);
   destinoEscolhido = (t.destino && t.destino.lat != null) ? {...t.destino} : null;
   renderLinhasTrajeto();
+  renderTipoHorario();
   renderDiasTrajeto(t.dias||[]);
   carregarDestinos();
   trocarAba("trajetos");
@@ -812,6 +839,7 @@ async function salvarTrajeto(){
     ativo: document.getElementById("tr-ativo").checked,
     pessoa: pessoa.id,
     linhas: [...selLinhasTrajeto],
+    tipo_horario: document.getElementById("tr-tipo").value,
     destino, dias, horarios
   };
   const r = await api("/api/trajetos", {trajeto});
@@ -1122,10 +1150,24 @@ async function carregarMapa(primeiro){
       </div></div>`;
     }
     const fora = t.agora ? "" : " · fora do horário";
+    const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
+    let status;
+    if (t.bus_id && b){
+      if ((t.tipo_horario||"ponto")==="chegar"){
+        const sair = b.sair_min;
+        const chega = b.chega_min!=null ? Math.round(b.chega_min) : null;
+        status = (sair!=null && sair<=0 ? "saia agora" : "saia em ~"+(sair!=null?Math.round(sair):"?")+" min") +
+                 (chega!=null ? " · chega ~"+chega+" min" : "") + " · "+risco;
+      } else {
+        status = "ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco;
+      }
+    } else {
+      status = "sem ônibus que atenda esse horário";
+    }
     return `<div class="item"><div>
       <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
-      <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
-      <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}${fora}</div>
+      <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé · ${esc(tipoTxt)}</div>
+      <div class="meta">${status}${total}${fora}</div>
     </div></div>`;
   }).join("") : '<div class="vazio">Nenhum trajeto ativo para mostrar.</div>';
 

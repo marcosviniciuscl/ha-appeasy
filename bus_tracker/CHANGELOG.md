@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.43.0
+
+- **Tipo de horário no trajeto**: ao criar/editar você escolhe o que o horário
+  informado significa:
+  - **Passa no ponto** (padrão): o ônibus passa no seu ponto naquele horário.
+  - **Fico livre**: você fica disponível naquele horário — o app pega o **próximo
+    ônibus** no ponto mais próximo depois disso.
+  - **Chegar no destino**: você quer chegar no destino naquele horário — o app
+    acha o **melhor horário para sair** (o ônibus que ainda chega a tempo).
+- O **destaque do ônibus** só aparece quando faz sentido para o tipo escolhido.
+- No painel o trajeto mostra o tipo e, no caso de "chegar", **quando sair** e
+  **quando chega**.
+
 ## 0.42.0
 
 - **Ponto de encontro fixo**: é sempre a parada válida **mais próxima** (não muda

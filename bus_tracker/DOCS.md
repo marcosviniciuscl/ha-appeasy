@@ -35,6 +35,21 @@ no mapa para carregar as paradas num **raio configurável** (Ajustes → *Raio d
 busca do destino no mapa*, padrão 3 km) e toque na parada desejada — só é aceito
 um ponto que existe de verdade.
 
+### O que o horário significa
+
+Cada trajeto tem um **tipo de horário** (não obrigatório; padrão *passa no
+ponto*):
+
+| Tipo | O horário é… | O que o app faz |
+| --- | --- | --- |
+| **Passa no ponto** | a hora que o ônibus passa no seu ponto | destaca o ônibus que passa perto desse horário |
+| **Fico livre** | a hora que você fica disponível | pega o **próximo ônibus** no ponto mais próximo depois disso |
+| **Chegar no destino** | a hora que você quer chegar | acha o **melhor horário para sair** e o ônibus que ainda chega a tempo |
+
+O ponto de embarque é sempre a **parada mais próxima que o ônibus (indo ao
+destino) atende**, e não muda enquanto você espera — quando o ônibus passa, o
+próximo que vier assume o destaque.
+
 Com isso o App calcula e mostra:
 
 - o **ponto de embarque** (a parada mais próxima **que fica no sentido do seu
