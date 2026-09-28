@@ -26,6 +26,9 @@ def _padroes():
             "margem_embarque_min": 2,         # chegar com essa folga no ponto
             "janela_saida_min": 30,           # avalia trajetos nessa janela antes do horário
             "osrm_base": "https://router.project-osrm.org",  # roteamento por ruas
+            # trajeto sem linha: "monitoradas" = linhas já monitoradas no app;
+            # "cidade" = descobre linhas da cidade que atendem o destino
+            "trajetos_sem_linha": "monitoradas",
         },
         "cidade": {},
         "casa": {"entidade": "zone.home", "lat": None, "lon": None, "raio": 150},

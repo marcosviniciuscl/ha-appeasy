@@ -11,15 +11,18 @@
     --bg:#0e1014; --card:#171a21; --card2:#1e222b; --linha:rgba(255,255,255,.09);
     --txt:#e9ecf2; --txt2:#98a2b3; --acento:#f5a524; --azul:#3d7dff; --ok:#37b169; --erro:#e5484d;
     --panel:rgba(20,23,29,.82); --hdr-bg:rgba(14,16,20,.78); --nav-bg:rgba(14,16,20,.94);
+    --hdr-fade:rgba(14,16,20,0);
     --hdr:48px; --nav:70px; --r:16px;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#eef1f5; --card:#fff; --card2:#f3f4f7; --linha:rgba(0,0,0,.08);
            --txt:#12151a; --txt2:#5c6472; --panel:rgba(255,255,255,.86);
-           --hdr-bg:rgba(255,255,255,.8); --nav-bg:rgba(255,255,255,.95); }
+           --hdr-bg:rgba(255,255,255,.8); --hdr-fade:rgba(255,255,255,0);
+           --nav-bg:rgba(255,255,255,.95); }
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
+  @supports (height: 100dvh){ html,body{height:100dvh} }
   body{background:var(--bg);color:var(--txt);
        font:15px/1.45 "SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
        -webkit-font-smoothing:antialiased;overscroll-behavior:none}
@@ -41,11 +44,16 @@
   .status{margin-left:auto;display:flex;align-items:center;gap:8px}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:middle}
   .dot.off{background:var(--erro)}
+  /* no mapa o topo vira um degradê: o mapa ocupa a tela toda, sem barra sólida */
+  body[data-tab="mapa"] header{background:linear-gradient(to bottom,var(--hdr-bg),var(--hdr-fade));
+    border-bottom-color:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding-bottom:16px}
 
   /* ---------- mapa em tela cheia ---------- */
   #s-mapa{display:none}
   #s-mapa.on{position:fixed;inset:0;z-index:1;display:block}
-  #mapa{position:absolute;inset:0;background:#20242c}
+  /* z-index:0 + isolation cria um contexto próprio para o Leaflet: assim os
+     panes (tiles/markers/popups, z-index até 800) não sobem por cima dos painéis */
+  #mapa{position:absolute;inset:0;z-index:0;isolation:isolate;background:#20242c}
   #mapa,.leaflet-container{touch-action:none;-webkit-user-select:none;user-select:none;
                            -webkit-tap-highlight-color:transparent}
   .leaflet-container{background:#20242c;font:inherit}
@@ -94,8 +102,8 @@
   .tab-btn .txt{display:block}
   .rail{display:none}
   nav{position:fixed;z-index:45;left:10px;right:10px;
-      bottom:calc(env(safe-area-inset-bottom) + 8px);
-      display:flex;justify-content:space-around;gap:4px;padding:6px;border-radius:20px;
+      bottom:calc(env(safe-area-inset-bottom) + 4px);
+      display:flex;justify-content:space-around;gap:4px;padding:5px;border-radius:20px;
       background:var(--nav-bg);backdrop-filter:blur(18px) saturate(140%);
       -webkit-backdrop-filter:blur(18px) saturate(140%);
       border:1px solid var(--linha);box-shadow:0 12px 32px rgba(0,0,0,.42)}
@@ -184,12 +192,47 @@
   input[list]::-webkit-calendar-picker-indicator{opacity:.45}
 
   /* destaque do ônibus chegando + animação da caminhada */
-  .busmark.destaque .b{animation:pisca 1.1s ease-in-out infinite}
-  @keyframes pisca{0%,100%{box-shadow:0 0 0 0 rgba(61,125,255,.85)}50%{box-shadow:0 0 0 13px rgba(61,125,255,0)}}
+  .busmark.destaque .b{background:var(--azul);color:#fff;border-color:var(--azul);
+                       animation:pisca 1s ease-in-out infinite}
+  @keyframes pisca{
+    0%,100%{box-shadow:0 0 0 0 rgba(61,125,255,.9),0 0 0 3px rgba(61,125,255,.95);opacity:1}
+    50%{box-shadow:0 0 0 16px rgba(61,125,255,0),0 0 0 3px rgba(61,125,255,.3);opacity:.72}
+  }
   .leaflet-container svg,.leaflet-container path{touch-action:none}
-  .leaflet-interactive.caminhando{stroke-dasharray:5 9;animation:corre .7s linear infinite}
+  .leaflet-container .caminhando{stroke-dasharray:5 9;animation:corre .7s linear infinite}
   @keyframes corre{to{stroke-dashoffset:-14}}
-  .leaflet-interactive.rotaDestaque{filter:drop-shadow(0 0 5px rgba(61,125,255,.9))}
+  @keyframes correRota{to{stroke-dashoffset:-24}}
+  .leaflet-container .rotaDestaque{filter:drop-shadow(0 0 7px rgba(61,125,255,.95));
+                                   stroke-dasharray:14 10;animation:correRota 1s linear infinite}
+  /* ponto de embarque do trajeto que está acontecendo: borda azul piscando */
+  .leaflet-container .pontoDestaque{animation:piscaPonto 1s ease-in-out infinite}
+  @keyframes piscaPonto{
+    0%,100%{stroke-opacity:1;stroke-width:5}
+    50%{stroke-opacity:.25;stroke-width:2}
+  }
+
+  /* ---------- popups e detalhes com ícones ---------- */
+  .leaflet-popup-content-wrapper{background:var(--card);color:var(--txt);border-radius:14px;
+    border:1px solid var(--linha);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+  .leaflet-popup-content{margin:10px 12px;font-size:13px;line-height:1.4}
+  .leaflet-popup-tip{background:var(--card);border:1px solid var(--linha)}
+  .leaflet-popup-close-button{color:var(--txt2)!important}
+  .pop .pop-h{display:flex;align-items:center;gap:9px}
+  .pop .pop-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+    background:var(--azul);color:#fff;box-shadow:0 4px 12px rgba(61,125,255,.35)}
+  .pop .pop-ic.bus{background:var(--acento);color:#20160a;box-shadow:0 4px 12px rgba(245,165,36,.35)}
+  .pop .pop-ic svg{width:19px;height:19px;fill:currentColor}
+  .pop .pop-t{font-weight:700;font-size:14px}
+  .pop .pop-s{font-size:11.5px;color:var(--txt2)}
+  .pop .pop-r{display:flex;align-items:center;gap:6px;margin-top:9px;color:var(--txt2);font-size:12.5px}
+  .pop .pop-r svg{width:15px;height:15px;fill:currentColor;opacity:.85;flex:0 0 auto}
+  .pop .pop-a{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--azul)}
+  .icline{display:flex;align-items:center;gap:8px;margin-top:6px;color:var(--txt2);font-size:12.5px}
+  .icline svg{width:16px;height:16px;fill:currentColor;flex:0 0 auto;opacity:.85}
+  .icline b{color:var(--txt);font-weight:600}
+  .prox-parada .p-ic{width:26px;height:26px;border-radius:8px;background:var(--card2);border:1px solid var(--linha);
+                     display:grid;place-items:center;flex:0 0 auto}
+  .prox-parada .p-ic svg{width:15px;height:15px;fill:var(--azul)}
 
   @media (max-width: 899px){
     .brand h1{font-size:14.5px}
@@ -243,6 +286,8 @@
   <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></symbol>
   <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M19,13H5V11H19V13Z"/></symbol>
   <symbol id="ic-home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></symbol>
+  <symbol id="ic-wheel" viewBox="0 0 24 24"><path d="M18.4,10.2L13.7,9.4L13.9,8.4C14.7,8.5 15.5,8.1 16,7.4L17.4,5.6C17.8,5.1 18.4,5 18.9,5.4C19.4,5.8 19.5,6.4 19.1,6.9L17.7,8.7C17.3,9.2 16.7,9.5 16.1,9.5L15.9,9.5L15.3,12.6L16.7,14L19.4,17.6L18,18.6L14.8,14.4L12.3,16.5V21H10.3V15.3L12.9,13.1L12.6,11.1L11.1,13.4C10.4,14.4 9.1,15 7.8,15C7.1,15 6.4,14.8 5.8,14.5L7,13L7.9,13.5C8.5,13.8 9.2,13.7 9.7,13.2L12.3,9.9C12.6,9.5 13.1,9.2 13.6,9.2L18.4,10.2M7.5,15.5A2.5,2.5 0 0,0 5,18A2.5,2.5 0 0,0 7.5,20.5A2.5,2.5 0 0,0 10,18A2.5,2.5 0 0,0 7.5,15.5Z"/></symbol>
+  <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z"/></symbol>
 </svg>
 <datalist id="dl-linhas"></datalist>
 <datalist id="dl-destinos"></datalist>
@@ -342,10 +387,16 @@
       <p class="hint">Escolha a pessoa, o ônibus, onde vai <b>descer</b> e os horários. O app calcula o tempo a pé até o ponto de embarque e o risco de perder o ônibus.</p>
       <label class="f">Pessoa</label>
       <input id="tr-pessoa" list="dl-pessoas" placeholder="digite o nome…">
-      <label class="f">Linha (ônibus)</label>
-      <input id="tr-linha" list="dl-linhas" placeholder="digite para buscar…" oninput="carregarDestinos()">
+      <label class="f">Linhas (opcional — pode escolher várias)</label>
+      <input id="tr-linha" list="dl-linhas" placeholder="digite e pressione Enter…"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarLinhaTrajeto()}">
+      <div class="chips" id="tr-linhas"></div>
+      <p class="hint" id="tr-linhas-hint">Sem linha escolhida? O app considera as linhas monitoradas que passam pelo destino (ajustável em Ajustes).</p>
       <label class="f">Ponto de destino (onde vai descer)</label>
-      <input id="tr-destino" list="dl-destinos" placeholder="digite o ponto…">
+      <div class="row" style="margin-top:0">
+        <input id="tr-destino" list="dl-destinos" placeholder="digite o ponto…" style="flex:1;min-width:160px">
+        <button class="bt sec sm" type="button" onclick="marcarDestino()">Escolher no mapa</button>
+      </div>
       <label class="f">Horários do ônibus</label>
       <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
       <label class="f">Dias da semana</label>
@@ -392,18 +443,31 @@
   <section id="s-ajustes">
     <div class="card">
       <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Comportamento</h2>
-      <div class="grid2">
-        <div><label class="f">Avisar quando faltar (m)</label><input type="number" id="aj-limiar" step="100"></div>
-        <div><label class="f">Intervalo mínimo entre avisos (min)</label><input type="number" id="aj-cooldown"></div>
-        <div><label class="f">Velocidade mínima p/ cálculo (km/h)</label><input type="number" id="aj-vel" step="1"></div>
-        <div><label class="f">Leitura da API a cada (s)</label><input type="number" id="aj-intervalo" step="5"></div>
-        <div><label class="f">Atualizar rastreio a cada (s)</label><input type="number" id="aj-rastreio" step="10"></div>
-        <div><label class="f">Fuso horário</label><input id="aj-fuso"></div>
-        <div><label class="f">Velocidade a pé (km/h)</label><input type="number" id="aj-caminhada" step="0.1"></div>
-        <div><label class="f">Fator de rota (ruas)</label><input type="number" id="aj-fator" step="0.1"></div>
-        <div><label class="f">Margem de embarque (min)</label><input type="number" id="aj-margem" step="1"></div>
-        <div><label class="f">Avisar saída até (min antes)</label><input type="number" id="aj-janela" step="5"></div>
-      </div>
+      <label class="f">Trajeto sem linha escolhida</label>
+      <select id="aj-semlinha">
+        <option value="monitoradas">Usar as linhas monitoradas no app</option>
+        <option value="cidade">Descobrir linhas da cidade que atendem o destino</option>
+      </select>
+      <label class="f">Avisar quando faltar (m)</label>
+      <input type="number" id="aj-limiar" step="100">
+      <label class="f">Intervalo mínimo entre avisos (min)</label>
+      <input type="number" id="aj-cooldown">
+      <label class="f">Velocidade mínima p/ cálculo (km/h)</label>
+      <input type="number" id="aj-vel" step="1">
+      <label class="f">Leitura da API a cada (s)</label>
+      <input type="number" id="aj-intervalo" step="5">
+      <label class="f">Atualizar rastreio a cada (s)</label>
+      <input type="number" id="aj-rastreio" step="10">
+      <label class="f">Fuso horário</label>
+      <input id="aj-fuso">
+      <label class="f">Velocidade a pé (km/h)</label>
+      <input type="number" id="aj-caminhada" step="0.1">
+      <label class="f">Fator de rota (ruas)</label>
+      <input type="number" id="aj-fator" step="0.1">
+      <label class="f">Margem de embarque (min)</label>
+      <input type="number" id="aj-margem" step="1">
+      <label class="f">Avisar saída até (min antes)</label>
+      <input type="number" id="aj-janela" step="5">
       <div class="row">
         <label class="switch"><input type="checkbox" id="aj-sim"><span class="tr"></span> Modo simulação (não envia nada)</label>
       </div>
@@ -430,7 +494,7 @@
       <div class="aviso" id="casa-msg"></div>
     </div>
     <div class="card">
-      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Rastreios ativos<span class="tag" id="tag-rastreios"></span></h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Rastreios automáticos<span class="tag" id="tag-rastreios"></span></h2>
       <div id="lista-rastreios"></div>
     </div>
     <div class="card">
@@ -455,12 +519,14 @@
 const BASE = location.pathname.replace(/\/$/, "") + "/";
 const DIAS = ["seg","ter","qua","qui","sex","sáb","dom"];
 let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
-let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer, destaqueLayer;
+let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer, destaqueLayer, destinoPickLayer;
 let mkOnibus = {};
 let busesDestaque = new Set();
 let onibusSel = null, rotaAjustada = false, marcandoCasa = false;
+let marcandoDestino = false, destinosPick = [], destinoEscolhido = null;
 let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
+let selLinhasTrajeto = new Set();
 
 /* ------------------------------------------------ navegação */
 function trocarAba(t){
@@ -526,18 +592,38 @@ function pessoaPorNome(nome){
 }
 let destinosLinha = [];
 async function carregarDestinos(){
-  const sigla = document.getElementById("tr-linha").value.trim();
   const dl = document.getElementById("dl-destinos");
   destinosLinha = [];
   dl.innerHTML = "";
-  if (!sigla) return;
+  const linhas = [...selLinhasTrajeto];
+  if (!linhas.length) return;
   try {
-    const r = await api("/api/paradas?linha="+encodeURIComponent(sigla));
+    const qs = linhas.map(s=>"linha="+encodeURIComponent(s)).join("&");
+    const r = await api("/api/paradas?"+qs);
     if (r && r.ok){
       destinosLinha = r.paradas||[];
       dl.innerHTML = destinosLinha.map(p=>`<option value="${esc(p.nome)}"></option>`).join("");
     }
   } catch(e){}
+}
+function renderLinhasTrajeto(){
+  const cx = document.getElementById("tr-linhas");
+  const arr = [...selLinhasTrajeto];
+  cx.innerHTML = arr.length
+    ? arr.map(s=>`<label class="chip on" data-id="${esc(s)}">${esc(s)} ✕</label>`).join("")
+    : '<span class="meta">Nenhuma linha (usa as monitoradas/do destino)</span>';
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{ e.preventDefault(); selLinhasTrajeto.delete(c.dataset.id); renderLinhasTrajeto(); carregarDestinos(); };
+  });
+}
+function adicionarLinhaTrajeto(){
+  const inp = document.getElementById("tr-linha");
+  const v = inp.value.trim();
+  if (!v) return;
+  selLinhasTrajeto.add(v);
+  inp.value = "";
+  renderLinhasTrajeto();
+  carregarDestinos();
 }
 
 /* ------------------------------------------------ cidade */
@@ -620,8 +706,9 @@ function renderTrajetos(){
     const nome = (est.pessoas.find(x=>x.id===pid)||{}).nome || pid;
     return `<div class="grupo-titulo">${esc(nome)}</div>` + porPessoa[pid].map(t=>{
       const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
+      const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
       return `<div class="item"><div>
-        <div class="nome">Linha ${esc(t.linha)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
+        <div class="nome">${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
         <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
       </div><div class="dir">
         <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
@@ -639,19 +726,26 @@ function novoTrajeto(){
   document.getElementById("tr-destino").value = "";
   document.getElementById("tr-horarios").value = "";
   document.getElementById("tr-ativo").checked = true;
+  selLinhasTrajeto = new Set();
+  destinoEscolhido = null;
   destinosLinha = [];
   document.getElementById("dl-destinos").innerHTML = "";
+  renderLinhasTrajeto();
   renderDiasTrajeto([1,2,3,4,5]);
 }
 function editarTrajeto(id){
   const t = (est.trajetos||[]).find(x=>x.id===id); if(!t) return;
   editandoTrajeto = id;
-  document.getElementById("tr-titulo").textContent = "Editando trajeto · linha "+t.linha;
+  const linhas = (t.linhas && t.linhas.length) ? t.linhas : (t.linha ? [t.linha] : []);
+  document.getElementById("tr-titulo").textContent = "Editando trajeto · "+(linhas.join(", ")||"todas do destino");
   document.getElementById("tr-pessoa").value = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa || "";
-  document.getElementById("tr-linha").value = t.linha||"";
+  document.getElementById("tr-linha").value = "";
   document.getElementById("tr-destino").value = (t.destino && t.destino.nome) || "";
   document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
   document.getElementById("tr-ativo").checked = !!t.ativo;
+  selLinhasTrajeto = new Set(linhas);
+  destinoEscolhido = (t.destino && t.destino.lat != null) ? {...t.destino} : null;
+  renderLinhasTrajeto();
   renderDiasTrajeto(t.dias||[]);
   carregarDestinos();
   trocarAba("trajetos");
@@ -663,13 +757,21 @@ async function salvarTrajeto(){
   if (!pessoa) return msg("tr-msg","Escolha a pessoa (digite o nome).", false);
   const destNome = document.getElementById("tr-destino").value.trim();
   const dest = destinosLinha.find(p=>p.nome===destNome);
+  let destino = {};
+  if (dest){
+    destino = {cod: dest.cod||"", nome: destNome, lat: dest.lat, lon: dest.lon};
+  } else if (destinoEscolhido && destinoEscolhido.nome === destNome){
+    destino = {cod: destinoEscolhido.cod||"", nome: destNome,
+               lat: destinoEscolhido.lat, lon: destinoEscolhido.lon};
+  } else if (destNome){
+    destino = {cod:"", nome: destNome};
+  }
   const trajeto = {
     id: editandoTrajeto,
     ativo: document.getElementById("tr-ativo").checked,
     pessoa: pessoa.id,
-    linha: document.getElementById("tr-linha").value.trim(),
-    destino: destNome ? {cod: dest?dest.cod:"", nome: destNome, lat: dest?dest.lat:null, lon: dest?dest.lon:null} : {},
-    dias, horarios
+    linhas: [...selLinhasTrajeto],
+    destino, dias, horarios
   };
   const r = await api("/api/trajetos", {trajeto});
   if (r.ok){ msg("tr-msg","Trajeto salvo."); novoTrajeto(); await carregarEstado(); carregarMapa(); }
@@ -702,14 +804,79 @@ function busIcon(b, sel, destaque){
 }
 function popupBus(b){
   const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)} km/h` : "";
-  return `<b>Linha ${esc(b.linha)}</b><br>Veículo ${esc(b.id)}<br>${b.em_movimento?"em movimento":"parado"}${vel}<br><i>Toque para ver a rota</i>`;
+  return `<div class="pop">
+    <div class="pop-h"><span class="pop-ic bus">${BUS_SVG}</span>
+      <div><div class="pop-t">Linha ${esc(b.linha)}</div>
+      <div class="pop-s">Veículo ${esc(b.id)}</div></div></div>
+    <div class="pop-r"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-clock"/></svg>
+      ${b.em_movimento?"Em movimento":"Parado"}${vel}</div>
+    <div class="pop-a">Toque para ver a rota →</div>
+  </div>`;
+}
+function popIco(icone, cor, titulo, sub){
+  return `<div class="pop"><div class="pop-h">
+    <span class="pop-ic" style="background:${cor};box-shadow:none">
+      <svg viewBox="0 0 24 24"><use href="#${icone}"/></svg></span>
+    <div><div class="pop-t">${titulo}</div>${sub?`<div class="pop-s">${sub}</div>`:""}</div>
+  </div></div>`;
 }
 function centroMapa(){
   return (est.cidade && est.cidade.centro) || [-12.2664,-38.9663];
 }
 function zoomIn(){ if (mapa) mapa.zoomIn(1); }
 function zoomOut(){ if (mapa) mapa.zoomOut(1); }
+
+/* ------------------------------------------------ escolher destino no mapa */
+function marcarDestino(){
+  marcandoDestino = true;
+  destinosPick = destinosLinha.slice();
+  trocarAba("mapa");
+  if (!destinosPick.length && mapa){
+    const c = mapa.getCenter();
+    api("/api/paradas_proximas?lat="+c.lat+"&lon="+c.lng).then(r=>{
+      if (r && r.ok && marcandoDestino && !destinosPick.length){
+        destinosPick = r.paradas||[];
+        desenharDestinosPick();
+      }
+    }).catch(()=>{});
+  }
+  desenharDestinosPick();
+  msg("tr-msg", destinosPick.length ? "Toque num ponto no mapa para escolher o destino." :
+      "Toque no mapa para marcar o destino (ponto mais próximo).");
+}
+function desenharDestinosPick(){
+  if (!destinoPickLayer) return;
+  destinoPickLayer.clearLayers();
+  destinosPick.forEach(p=>{
+    if (p.lat == null) return;
+    destinoPickLayer.addLayer(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:3,
+      fillColor:"#f5a524", fillOpacity:.7, className:"pontoPick", interactive:false}));
+  });
+}
+function escolherDestino(latlng){
+  let melhor = null, melhorD = Infinity;
+  destinosPick.forEach(p=>{
+    if (p.lat == null) return;
+    const d = latlng.distanceTo(L.latLng(p.lat, p.lon));
+    if (d < melhorD){ melhorD = d; melhor = p; }
+  });
+  if (melhor && melhorD <= 500){
+    destinoEscolhido = {cod: melhor.cod||"", nome: melhor.nome, lat: melhor.lat, lon: melhor.lon};
+  } else {
+    const lat = +latlng.lat.toFixed(6), lon = +latlng.lng.toFixed(6);
+    destinoEscolhido = {cod:"", nome:"Ponto "+lat.toFixed(4)+", "+lon.toFixed(4), lat, lon};
+  }
+  document.getElementById("tr-destino").value = destinoEscolhido.nome;
+}
 function aoClicarMapa(e){
+  if (marcandoDestino){
+    escolherDestino(e.latlng);
+    marcandoDestino = false;
+    if (destinoPickLayer) destinoPickLayer.clearLayers();
+    trocarAba("trajetos");
+    msg("tr-msg", "Destino escolhido: " + destinoEscolhido.nome);
+    return;
+  }
   if (marcandoCasa){
     document.getElementById("casa-lat").value = e.latlng.lat.toFixed(6);
     document.getElementById("casa-lon").value = e.latlng.lng.toFixed(6);
@@ -731,6 +898,7 @@ function iniciarMapa(){
   }).addTo(mapa);
   camadaOutros = L.layerGroup().addTo(mapa);
   destaqueLayer = L.layerGroup().addTo(mapa);
+  destinoPickLayer = L.layerGroup().addTo(mapa);
   camadaOnibus = L.layerGroup().addTo(mapa);
   rotaSelLayer = L.layerGroup().addTo(mapa);
   casaLayer = L.layerGroup().addTo(mapa);
@@ -742,10 +910,14 @@ async function carregarMapa(primeiro){
   const d = await api("/api/mapa");
   const norm = s => String(s||"").replace(/^0+/,"") || "0";
   const sel = new Set((est.mapa.onibus||[]).map(norm));
-  const exibidos = (d.onibus||[]).filter(b=> sel.size===0 || sel.has(norm(b.linha)));
 
-  // ônibus de trajetos que estão "acontecendo agora" ficam em destaque
-  busesDestaque = new Set((d.trajetos||[]).filter(t=>t.agora && t.bus_id).map(t=>String(t.bus_id)));
+  // trajetos que estão "acontecendo agora": ônibus e ponto de embarque em destaque
+  const ativos = (d.trajetos||[]).filter(t=>t.agora);
+  busesDestaque = new Set(ativos.filter(t=>t.bus_id).map(t=>String(t.bus_id)));
+  const linhasAtivas = new Set(ativos.map(t=>norm(t.linha)));
+  // o ônibus do trajeto ativo aparece mesmo que a linha não esteja selecionada
+  const exibidos = (d.onibus||[]).filter(b=>
+    sel.size===0 || sel.has(norm(b.linha)) || linhasAtivas.has(norm(b.linha)));
 
   const vistos = new Set();
   exibidos.forEach(b=>{
@@ -774,38 +946,51 @@ async function carregarMapa(primeiro){
     const ic = L.divIcon({className:"", iconSize:[0,0],
       html:`<div class="personmark"><div class="p">${PERSON_SVG}</div><div class="l">${esc(p.nome)}</div></div>`});
     camadaOutros.addLayer(L.marker([p.lat,p.lon], {icon:ic, bubblingMouseEvents:false})
-      .bindPopup(`<b>${esc(p.nome)}</b>`));
+      .bindPopup(popIco("ic-account", "#3d7dff", esc(p.nome), "Localização no mapa")));
   });
   (d.pontos||[]).forEach(p=>{
     camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:2, fillColor:"#f5a524", fillOpacity:.5})
-      .bindPopup(`<b>${esc(p.nome)}</b><br>para ${esc(p.pessoa)} · linha ${esc(p.linha)}<br>${fmtDist(p.dist_pessoa)} da pessoa`));
+      .bindPopup(popIco("ic-marker", "#f5a524", esc(p.nome),
+        `Para ${esc(p.pessoa)} · linha ${esc(p.linha)} · ${fmtDist(p.dist_pessoa)}`)));
   });
   // trajetos: caminhada (por ruas) até o ponto + ponto de embarque/desembarque
   (d.trajetos||[]).forEach(t=>{
     const p = t.ponto;
+    const ativo = !!t.agora;
     const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
       : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
     if (caminho.length>1){
-      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:4, opacity:.85,
-        className:"caminhando", interactive:false}));
+      // animação de deslocamento; no trajeto ativo a caminhada fica mais forte
+      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:ativo?5:4,
+        opacity:ativo?.95:.8, className:"caminhando"+(ativo?" caminhoAtivo":""), interactive:false}));
     }
     if (p){
-      camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
-        .bindPopup(`<b>${esc(t.pessoa)}</b><br>linha ${esc(t.linha)} · ${esc(p.nome)}<br>${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`));
+      if (ativo){
+        // ponto de embarque do trajeto em andamento: borda azul piscando
+        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:4,
+          fillColor:"#3d7dff", fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
+          .bindPopup(popIco("ic-marker", "#3d7dff", esc(p.nome),
+            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`)));
+      } else {
+        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
+          .bindPopup(popIco("ic-marker", "#37b169", esc(p.nome),
+            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`)));
+      }
     }
     if (t.destino && t.destino.lat != null && t.destino.lon != null){
       camadaOutros.addLayer(L.circleMarker([t.destino.lat,t.destino.lon], {radius:7, color:"#3d7dff", weight:3, fillColor:"#fff", fillOpacity:.95, bubblingMouseEvents:false})
-        .bindPopup(`<b>Destino de ${esc(t.pessoa)}</b><br>${esc(t.destino.nome)}`));
+        .bindPopup(popIco("ic-flag", "#3d7dff", esc(t.destino.nome), "Destino de "+esc(t.pessoa))));
     }
   });
   // casa (zona)
   casaLayer.clearLayers();
   if (d.casa){
     casaLayer.addLayer(L.circle([d.casa.lat, d.casa.lon], {radius:d.casa.raio||150, color:"#37b169",
-      weight:2, fillColor:"#37b169", fillOpacity:.12, bubblingMouseEvents:false}));
+      weight:2, fillColor:"#37b169", fillOpacity:.12, interactive:false}));
     const hic = L.divIcon({className:"", iconSize:[0,0],
       html:`<div class="personmark"><div class="p" style="background:#37b169">${HOME_SVG}</div></div>`});
-    casaLayer.addLayer(L.marker([d.casa.lat,d.casa.lon], {icon:hic, bubblingMouseEvents:false}).bindPopup("<b>Casa</b>"));
+    casaLayer.addLayer(L.marker([d.casa.lat,d.casa.lon], {icon:hic, bubblingMouseEvents:false})
+      .bindPopup(popIco("ic-home", "#37b169", "Casa", "Zona de referência")));
   }
 
   // rota azul do ônibus que está chegando (trajeto ativo agora)
@@ -821,7 +1006,9 @@ async function carregarMapa(primeiro){
   const rotas = d.rotas||{};
   Object.keys(rotas).forEach(sigla=>{
     rotas[sigla].forEach(pts=>{
-      if (pts.length>1) camadaOutros.addLayer(L.polyline(pts, {color:"#f5a524", weight:2, opacity:.35, dashArray:"1 6" }));
+      // interactive:false para não capturar o toque/pan do mapa
+      if (pts.length>1) camadaOutros.addLayer(L.polyline(pts, {color:"#f5a524", weight:2, opacity:.35,
+        dashArray:"1 6", interactive:false }));
     });
   });
 
@@ -838,8 +1025,9 @@ async function carregarMapa(primeiro){
     const b = (t.onibus||[])[0];
     const risco = b ? ({"ok":"dá tempo","correr":"corra!","perdeu":"pode perder","sem-previsao":"sem previsão"}[b.risco]||"") : "";
     const total = b && b.tempo_total_min!=null ? ` · total ~${Math.round(b.tempo_total_min)} min` : "";
+    const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
     return `<div class="item"><div>
-      <div class="nome">${esc(t.pessoa)} · linha ${esc(t.linha)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
+      <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
       <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé</div>
       <div class="meta">${b ? ("ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco) : "sem ônibus no mapa"}${total}</div>
     </div></div>`;
@@ -879,7 +1067,8 @@ async function desenharRotaSel(){
   paradas.forEach(p=>{
     const cor = p.passou ? "#8a94a6" : "#3d7dff";
     L.circleMarker([p.lat,p.lon], {radius:5, color:cor, weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
-      .bindPopup(`<b>${esc(p.nome)}</b>` + (p.passou ? "" : `<br>${textoEta(p)}${p.dist_m!=null?" · "+fmtDist(p.dist_m):""}`))
+      .bindPopup(popIco("ic-marker", cor, esc(p.nome),
+        p.passou ? "Já passou" : `${textoEta(p)}${p.dist_m!=null?" · "+fmtDist(p.dist_m):""}`))
       .addTo(grupo);
   });
   rotaSelLayer.clearLayers();
@@ -888,19 +1077,18 @@ async function desenharRotaSel(){
   const prox = paradas.filter(p=>!p.passou)
     .sort((a,b)=>(a.eta_min==null?1e9:a.eta_min)-(b.eta_min==null?1e9:b.eta_min)).slice(0,6);
   const info = document.getElementById("rota-info");
-  const extras = [];
-  if (o.sentido) extras.push(esc(o.sentido));
-  if (o.acessivel===true) extras.push("♿ acessível");
   info.style.display = "block";
   info.innerHTML = `
     <h2><span class="badge-linha">${esc(o.linha)}</span>
       <span>Linha ${esc(o.linha)} · veículo ${esc(o.id)}</span>
       <button class="btn-x" style="margin-left:auto" onclick="limparSelecao()"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button>
     </h2>
-    <div class="meta">${extras.join(" · ")}</div>
-    ${o.destino ? `<div class="meta" style="margin-top:4px">Destino: <b style="color:var(--txt)">${esc(o.destino)}</b></div>` : ""}
-    ${prox.length ? `<div class="meta" style="margin:10px 0 2px;font-weight:650;color:var(--txt)">Próximas paradas</div>` +
-      prox.map(p=>`<div class="prox-parada"><span class="bola"></span>
+    ${o.sentido ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-map"/></svg><span>${esc(o.sentido)}</span></div>` : ""}
+    ${o.destino ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-flag"/></svg><span>Destino: <b>${esc(o.destino)}</b></span></div>` : ""}
+    ${o.acessivel===true ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-wheel"/></svg><span>Veículo acessível</span></div>` : ""}
+    ${prox.length ? `<div class="sec-title" style="margin:12px 0 2px">Próximas paradas</div>` +
+      prox.map(p=>`<div class="prox-parada">
+        <span class="p-ic"><svg viewBox="0 0 24 24"><use href="#ic-marker"/></svg></span>
         <span style="min-width:0">${esc(nomeCurto(p.nome))}<br><span class="meta">${fmtDist(p.dist_m)}</span></span>
         <span class="eta">${textoEta(p)}</span></div>`).join("")
       : '<div class="meta" style="margin-top:8px">Sem paradas previstas.</div>'}`;
@@ -963,20 +1151,9 @@ async function carregarOnibus(){
         <div class="nome">Veículo ${esc(b.id)}</div>
         <div class="meta">${b.em_movimento?"em movimento":"parado"}${b.vel_kmh?" · "+Math.round(b.vel_kmh)+" km/h":""} · visto ${b.visto_ha_s}s atrás</div>
       </div><div class="dir">
-        <button class="bt sec sm" onclick="rastrear('${esc(l)}','${esc(b.id)}')">Rastrear</button>
+        <button class="bt sec sm" onclick="trocarAba('mapa');selecionarOnibus('${esc(b.id)}')">Ver rota</button>
       </div></div>`).join("")+"</div>"
   ).join("") : '<div class="vazio">Nenhum ônibus no mapa agora. Os ônibus aparecem durante o horário de operação.</div>';
-}
-function rastrear(linha, bus){
-  const ps = est.pessoas.filter(p=>p.ativo!==false);
-  if (!ps.length){ alert("Cadastre uma pessoa primeiro (aba Pessoas)."); return; }
-  const nome = prompt("Rastrear para quem?\n" + ps.map((p,i)=>`${i+1}) ${p.nome}`).join("\n"), "1");
-  const idx = parseInt(nome,10)-1;
-  if (isNaN(idx) || !ps[idx]) return;
-  api("/api/rastrear/"+ps[idx].id+"/"+encodeURIComponent(linha)+"/"+encodeURIComponent(bus), {}).then(()=>{
-    carregarEstado();
-    alert("Rastreio iniciado para "+ps[idx].nome+".");
-  });
 }
 
 async function salvarMapa(){
@@ -1054,9 +1231,11 @@ function renderAjustes(){
   document.getElementById("aj-fator").value = a.fator_rota;
   document.getElementById("aj-margem").value = a.margem_embarque_min;
   document.getElementById("aj-janela").value = a.janela_saida_min;
+  document.getElementById("aj-semlinha").value = a.trajetos_sem_linha || "monitoradas";
 }
 async function salvarAjustes(){
   const r = await api("/api/ajustes", {
+    trajetos_sem_linha: document.getElementById("aj-semlinha").value,
     limiar_aviso_m: +document.getElementById("aj-limiar").value,
     cooldown_min: +document.getElementById("aj-cooldown").value,
     velocidade_min_kmh: +document.getElementById("aj-vel").value,
@@ -1076,12 +1255,13 @@ function renderRastreios(d){
   const r = (d && d.rastreios)||[];
   el.innerHTML = r.length ? r.map(x=>{
     const p = est.pessoas.find(p=>p.id===x.pessoa_id)||{nome:x.pessoa_id};
+    const chave = x.chave || x.pessoa_id;
     return `<div class="item"><div><div class="nome">${esc(p.nome)} · linha ${esc(x.linha)}</div>
       <div class="meta">veículo ${esc(x.bus_id)} · desde ${fmtHora(x.inicio)} · início ${fmtDist(x.d0)}</div></div>
-      <div class="dir"><button class="bt del" onclick="pararRastreio('${esc(x.pessoa_id)}')">Parar</button></div></div>`;
-  }).join("") : '<div class="vazio">Nenhum rastreio em andamento.</div>';
+      <div class="dir"><button class="bt del" onclick="pararRastreio('${esc(chave)}')">Parar</button></div></div>`;
+  }).join("") : '<div class="vazio">Nenhum rastreio automático em andamento. Ele começa sozinho quando um trajeto entra no horário.</div>';
 }
-async function pararRastreio(id){ await api("/api/parar/"+id, {}); carregarMapa(); }
+async function pararRastreio(chave){ await api("/api/parar/"+encodeURIComponent(chave), {}); carregarMapa(); }
 function renderLog(d){
   const l = (d && d.log)||[];
   document.getElementById("log").innerHTML = l.length ? l.map(x=>

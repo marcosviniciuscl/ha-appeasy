@@ -206,14 +206,37 @@ class Handler(BaseHTTPRequestHandler):
         if caminho.startswith("/api/onibus/"):
             return self._json(motor.detalhes_onibus(caminho.rsplit("/", 1)[-1]))
         if caminho == "/api/paradas":
-            sigla = (parse_qs(urlparse(self.path).query).get("linha") or [""])[0].strip()
-            paradas = []
-            linha = api.linha_por_sigla(sigla) if sigla else None
-            if linha:
+            q = parse_qs(urlparse(self.path).query)
+            siglas = [s.strip() for s in (q.get("linha") or []) if s.strip()]
+            if not siglas and q.get("linhas"):
+                siglas = [s.strip() for s in q["linhas"][0].split(",") if s.strip()]
+            paradas, vistos = [], set()
+            for sigla in siglas:
+                linha = api.linha_por_sigla(sigla)
+                if not linha:
+                    continue
                 try:
-                    paradas = api.paradas_com_coordenadas(linha["cod"])
+                    for p in api.paradas_com_coordenadas(linha["cod"]):
+                        chave = (p.get("cod"), round(p.get("lat", 0), 5), round(p.get("lon", 0), 5))
+                        if chave in vistos:
+                            continue
+                        vistos.add(chave)
+                        paradas.append(p)
                 except Exception as e:
                     log.debug(f"paradas {sigla}: {e}")
+            return self._json({"ok": True, "paradas": paradas})
+        if caminho == "/api/paradas_proximas":
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                lat = float((q.get("lat") or [""])[0])
+                lon = float((q.get("lon") or [""])[0])
+            except (TypeError, ValueError):
+                return self._erro("informe lat/lon")
+            try:
+                paradas = api.paradas_proximas(lat, lon)
+            except Exception as e:
+                log.debug(f"paradas próximas: {e}")
+                paradas = []
             return self._json({"ok": True, "paradas": paradas})
         if caminho == "/api/log":
             return self._json({"log": list(motor.log)})
@@ -353,8 +376,6 @@ class Handler(BaseHTTPRequestHandler):
             trajeto = self._limpa_trajeto(corpo.get("trajeto") or corpo)
             if not trajeto.get("pessoa"):
                 return self._erro("informe a pessoa")
-            if not trajeto.get("linha"):
-                return self._erro("informe a linha")
             lista = cfg.setdefault("trajetos", [])
             for i, x in enumerate(lista):
                 if x.get("id") == trajeto["id"]:
@@ -363,7 +384,8 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 lista.append(trajeto)
             motor.salvar(cfg)
-            motor.registrar(f"Trajeto salvo: linha {trajeto['linha']} · "
+            linhas_txt = ", ".join(trajeto["linhas"]) or "todas do destino"
+            motor.registrar(f"Trajeto salvo: {linhas_txt} · "
                             f"{len(trajeto['horarios'])} horário(s)")
             return self._json({"ok": True, "trajeto": trajeto})
 
@@ -381,7 +403,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._erro("pessoa ou trajeto não encontrado", 404)
             info = motor.calcular_trajeto(trajeto)
             if not info:
-                return self._erro("não achei ônibus dessa linha perto de " + pessoa["nome"], 404)
+                return self._erro("não achei ônibus perto de " + pessoa["nome"], 404)
             bus = info["onibus"][0] if info["onibus"] else {"id": "0", "eta_min": None,
                                                             "risco": "sem-previsao"}
             motor.enviar_saida(info, bus)
@@ -395,17 +417,9 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=motor.ciclo, daemon=True).start()
             return self._json({"ok": True})
 
-        if caminho.startswith("/api/rastrear/"):
-            partes = caminho.strip("/").split("/")
-            if len(partes) == 5:
-                _, _, pid, sigla, bus_id = partes
-                ok = motor.iniciar_rastreio(pid, sigla, bus_id, manual=True)
-                return self._json({"ok": ok})
-            return self._erro("use /api/rastrear/<pessoa>/<linha>/<veiculo>")
-
         if caminho.startswith("/api/parar/"):
-            pid = caminho.rsplit("/", 1)[-1]
-            return self._json({"ok": motor.parar_rastreio(pid)})
+            chave = caminho.rsplit("/", 1)[-1]
+            return self._json({"ok": motor.parar_rastreio(chave)})
 
         if caminho.startswith("/api/teste/"):
             pid = caminho.rsplit("/", 1)[-1]
@@ -419,8 +433,7 @@ class Handler(BaseHTTPRequestHandler):
                 "Se você está vendo isso, os avisos estão funcionando.",
                 {"tag": "bustracker_teste",
                  "actions": [
-                     {"action": f"RECUSAR|{pid}|085|0", "title": "Agora não"},
-                     {"action": f"RASTREAR|{pid}|085|0", "title": "📡 Rastrear"},
+                     {"action": f"RECUSAR|{pid}|085|0", "title": "Ok"},
                  ]},
             )
             motor.registrar(f"Notificação de teste enviada a {pessoa['nome']}")
@@ -492,16 +505,28 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             if 0 <= d <= 6:
                 dias.append(d)
+        linhas = []
+        for s in (t.get("linhas") or ([t.get("linha")] if t.get("linha") else [])):
+            s = str(s or "").strip()
+            if s and s not in linhas:
+                linhas.append(s)
         destino = t.get("destino") or {}
         if not isinstance(destino, dict):
             destino = {"nome": str(destino)}
+        lat, lon = destino.get("lat"), destino.get("lon")
+        try:
+            lat = float(lat) if lat not in (None, "") else None
+            lon = float(lon) if lon not in (None, "") else None
+        except (TypeError, ValueError):
+            lat = lon = None
         return {
             "id": str(t.get("id") or uuid.uuid4().hex[:8]),
             "ativo": bool(t.get("ativo", True)),
             "pessoa": str(t.get("pessoa") or "").strip(),
-            "linha": str(t.get("linha") or "").strip(),
+            "linhas": linhas,
             "destino": {"cod": str(destino.get("cod") or "").strip(),
-                        "nome": str(destino.get("nome") or "").strip()},
+                        "nome": str(destino.get("nome") or "").strip(),
+                        "lat": lat, "lon": lon},
             "dias": sorted(set(dias)) if dias else list(range(7)),
             "horarios": sorted(set(horarios)),
         }

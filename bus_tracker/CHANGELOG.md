@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.33.0
+
+- **Trajetos sem linha obrigatória**: dá para escolher **várias linhas**
+  (multiselect) ou deixar vazio. Sem linha, o app usa as **linhas monitoradas
+  que passam pelo destino** (padrão) ou **descobre as linhas da cidade** que
+  atendem o destino — configurável em **Ajustes → Comportamento**.
+- **Destino direto no mapa**: botão **Escolher no mapa** no cadastro do trajeto;
+  toque no ponto desejado (ou em qualquer lugar) para definir onde descer.
+- **Rastreio automático**: acabou a seleção manual de "Rastrear". A **Live
+  Activity** começa sozinha quando o ônibus cumpre as condições do trajeto e
+  encerra na chegada/expiração. A lista em Ajustes virou **Rastreios
+  automáticos** (só acompanhamento).
+- **Modais com ícones**: popups do ônibus/ponto e o painel da linha ficaram mais
+  bonitos, com ícones de veículo, relógio, destino, acessibilidade e paradas.
+- Corrigido o **toque/pan do mapa**: os traçados das linhas não capturam mais o
+  gesto (touch-action) quando estão exibidos.
+- **Ajustes → Comportamento** agora com as opções **uma embaixo da outra**.
+- Corrigido o **empilhamento do mapa**: os painéis de informação (rota do ônibus,
+  trajetos e pontos) não ficam mais atrás dos panes do Leaflet.
+
+## 0.32.0
+
+- **Mapa em tela cheia**: no mapa o topo virou um leve degradê (sem barra sólida)
+  e o menu inferior flutuante ficou mais colado na base da tela.
+- Corrigida a **animação da caminhada** e o **brilho da rota** (as classes do
+  Leaflet não eram aplicadas quando o traçado não era interativo).
+- Trajeto **no horário** agora destaca de verdade: o **ônibus** e o **ponto de
+  embarque mais próximo** piscam em **azul**, a **rota** fica azul animada e o
+  **caminho até o ponto** ganha animação de deslocamento. O ônibus do trajeto
+  aparece no mapa mesmo que a linha não esteja selecionada.
+
 ## 0.31.0
 
 - Trajetos agora usam **ponto de destino** (onde a pessoa vai descer) em vez de

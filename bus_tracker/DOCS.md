@@ -24,8 +24,13 @@ qualquer outra cidade que use o mesmo sistema por configuração manual.
 
 Na aba **Trajetos** você cadastra **quais ônibus cada pessoa pega**, em **quais
 horários** e o **ponto de destino** (onde vai descer). É possível ter **vários
-trajetos** por pessoa e **vários horários** por trajeto. O ponto de destino sai
-da própria linha escolhida (lista pesquisável).
+trajetos** por pessoa e **vários horários** por trajeto.
+
+A linha **não é obrigatória**: dá para escolher **várias linhas** e, deixando
+vazio, o app usa as **linhas monitoradas que passam pelo destino** (padrão) ou
+descobre as **linhas da cidade** que atendem o destino (veja **Ajustes →
+Comportamento → Trajeto sem linha escolhida**). O ponto de destino sai da lista
+pesquisável ou pode ser marcado **direto no mapa** (botão *Escolher no mapa*).
 
 Com isso o App calcula e mostra:
 
@@ -39,8 +44,14 @@ Com isso o App calcula e mostra:
 
 Perto do horário configurado, o App envia uma notificação para **sair a tempo**
 e, depois, **atualizações em tempo real** com o tempo do ônibus, o seu tempo a
-pé e o risco. Os cálculos usam a posição real dos ônibus (SIUMobile) e a sua
-localização no Home Assistant.
+pé e o risco. O **rastreio ao vivo (Live Activity) começa automaticamente**
+quando o ônibus cumpre as condições do trajeto e termina na chegada — não há
+mais seleção manual. Os cálculos usam a posição real dos ônibus (SIUMobile) e a
+sua localização no Home Assistant.
+
+No mapa, quando um trajeto está **no horário**: o **ônibus** e o **ponto de
+embarque** piscam em **azul**, a **rota** fica destacada e o **caminho até o
+ponto** ganha animação de deslocamento.
 
 ## Cidades
 
