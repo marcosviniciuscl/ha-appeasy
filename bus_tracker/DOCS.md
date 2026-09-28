@@ -45,7 +45,7 @@ Se a sua cidade usa o SIUMobile mas não está na lista, preencha manualmente:
 | --- | --- | --- |
 | `cidade` | `feira_de_santana` | Cidade embutida (ver tabela acima). |
 | `intervalo_segundos` | `30` | Intervalo entre leituras da API (5–300 s). |
-| `linhas_monitoradas` | — | Linhas extras monitoradas (separadas por vírgula, ex.: `085, 112`), mesmo sem aviso configurado. |
+| `linhas_monitoradas` | `[]` | Linhas extras monitoradas mesmo sem aviso configurado. |
 | `api_base` | — | Sobrescreve a URL base (cidade não listada). |
 | `api_praca` | — | Sobrescreve o código da praça. |
 | `app_package` | — | Sobrescreve o pacote do app. |

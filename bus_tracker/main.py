@@ -84,8 +84,10 @@ def main():
 
     if opcoes.get("intervalo_segundos"):
         cfg["ajustes"]["intervalo_segundos"] = int(opcoes["intervalo_segundos"])
-    linhas_extras = [s for s in re.split(r"[,;\s]+", str(opcoes.get("linhas_monitoradas") or ""))
-                     if s]
+    linhas_brutas = opcoes.get("linhas_monitoradas") or []
+    if not isinstance(linhas_brutas, (list, tuple, set)):
+        linhas_brutas = re.split(r"[,;\s]+", str(linhas_brutas))
+    linhas_extras = [str(s).strip() for s in linhas_brutas if str(s).strip()]
     motor = Motor(cfg, store.salvar, linhas_extras=linhas_extras)
 
     if not ha.token():

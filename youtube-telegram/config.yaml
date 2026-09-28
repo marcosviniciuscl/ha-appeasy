@@ -1,5 +1,5 @@
 name: "YouTube para Telegram"
-version: "1.0.5"
+version: "1.0.6"
 slug: "youtube_telegram"
 description: >-
   Recebe links do YouTube pelo Telegram, baixa o vídeo ou o áudio e devolve no
@@ -21,7 +21,7 @@ map:
     read_only: false
 options:
   telegram_token: ""
-  usuarios_autorizados: ""
+  usuarios_autorizados: []
   aceitar_grupos: false
   youtube:
     ativo: true
@@ -40,7 +40,7 @@ options:
     nivel: INFO
 schema:
   telegram_token: str
-  usuarios_autorizados: str
+  usuarios_autorizados: ["str?"]
   aceitar_grupos: bool
   youtube:
     ativo: bool

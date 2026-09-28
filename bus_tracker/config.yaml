@@ -1,5 +1,5 @@
 name: "Bus Tracker"
-version: "3.0.1"
+version: "3.0.2"
 slug: "bus_tracker"
 description: >-
   Ônibus ao vivo das cidades que usam o sistema SIUMobile, com painel de avisos,
@@ -22,14 +22,14 @@ map:
 options:
   cidade: "feira_de_santana"
   intervalo_segundos: 30
-  linhas_monitoradas: ""
+  linhas_monitoradas: []
   api_base: ""
   api_praca: ""
   app_package: ""
 schema:
   cidade: "list(feira_de_santana|belo_horizonte)"
   intervalo_segundos: int(5,300)
-  linhas_monitoradas: str
+  linhas_monitoradas: ["str?"]
   api_base: "str?"
   api_praca: "str?"
   app_package: "str?"

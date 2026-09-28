@@ -42,11 +42,11 @@ Fale com o [@userinfobot](https://t.me/userinfobot) e copie o campo `Id`.
 
    ```yaml
    telegram_token: "SEU_TOKEN_DO_BOTFATHER"
-   usuarios_autorizados: "SEU_ID"
+   usuarios_autorizados:
+     - SEU_ID
    ```
 
-   Para liberar mais de uma pessoa, separe os IDs por vírgula:
-   `usuarios_autorizados: "111111111, 222222222"`.
+   Clique no **+** para liberar mais de uma pessoa.
 
 3. Clique em **Salvar** e depois em **Iniciar**.
 4. No Telegram, mande `/start` para o seu bot e envie um link do YouTube.
@@ -66,7 +66,7 @@ Fale com o [@userinfobot](https://t.me/userinfobot) e copie o campo `Id`.
 | Opção | Descrição |
 | --- | --- |
 | `telegram_token` | Token do bot (BotFather). **Obrigatório.** |
-| `usuarios_autorizados` | IDs que podem usar o bot, separados por vírgula (ex.: `111, 222`). Vazio = todos. |
+| `usuarios_autorizados` | Lista de IDs que podem usar o bot (use o **+** para adicionar vários). Vazio = todos. |
 | `aceitar_grupos` | Se `true`, também responde em grupos. |
 
 ### YouTube

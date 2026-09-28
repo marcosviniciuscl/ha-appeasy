@@ -1,10 +1,13 @@
 # Changelog
 
+## 1.0.6
+
+- `usuarios_autorizados` vira uma lista no formato `["str?"]`, com botão de
+  adicionar/remover na UI (mesmo padrão que funciona no Bus Tracker).
+
 ## 1.0.5
 
-- `usuarios_autorizados` agora é um campo de texto com IDs separados por vírgula.
-  Contorna o bug da UI do HA que não mostra os botões de adicionar/remover em
-  opções do tipo lista.
+- Ajuste interno ao ler `usuarios_autorizados`.
 
 ## 1.0.4
 

@@ -1,10 +1,13 @@
 # Changelog
 
+## 3.0.2
+
+- `linhas_monitoradas` volta a ser uma lista com botão de adicionar (formato
+  `["str?"]`), que a UI do HA renderiza corretamente.
+
 ## 3.0.1
 
-- `linhas_monitoradas` agora é um campo de texto com as linhas separadas por
-  vírgula. Contorna o bug da UI do HA que não mostra os botões de
-  adicionar/remover em opções do tipo lista.
+- Ajuste interno ao ler `linhas_monitoradas`.
 
 ## 3.0.0
 
