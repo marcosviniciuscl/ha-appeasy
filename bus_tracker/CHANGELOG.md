@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.35.0
+
+- **Criar trajeto por uma parada da rota**: ao tocar no ônibus, cada parada do
+  painel e do mapa tem um botão **+ trajeto** que abre o cadastro já com aquela
+  linha e aquele ponto como destino.
+- **Busca de destino no mapa** agora junta as paradas próximas do toque com as
+  paradas das **linhas monitoradas dentro do raio** — como a API ignora o raio
+  pedido, antes vinham só ~7 pontos; agora vêm todos os das linhas monitoradas.
+- **Indicador de carregamento global**: barra no topo e um selo *carregando…* no
+  topo para **todas as requisições** (API e imagens do mapa).
+
 ## 0.34.1
 
 - Corrigido o **ponto de embarque**: agora ele é a parada **sobre o traçado que o

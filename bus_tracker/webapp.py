@@ -20,6 +20,7 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
+import geo
 import ha
 import rotas
 import siumobile as api
@@ -233,14 +234,47 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 return self._erro("informe lat/lon")
             try:
-                raio = int((q.get("raio") or [self.motor.cfg["ajustes"].get("raio_destino_m", 3000)])[0])
+                raio = int((q.get("raio") or [motor.cfg["ajustes"].get("raio_destino_m", 3000)])[0])
             except (TypeError, ValueError):
                 raio = 3000
+            raio = max(100, min(raio, 20000))
+            centro = (lat, lon)
+            paradas, vistos = [], set()
+
+            def _add(p):
+                if p.get("lat") is None or p.get("lon") is None:
+                    return
+                chave = (p.get("cod"), round(p["lat"], 5), round(p["lon"], 5))
+                if chave in vistos:
+                    return
+                vistos.add(chave)
+                paradas.append({"cod": p.get("cod"), "nome": p.get("nome"),
+                                "lat": p["lat"], "lon": p["lon"],
+                                "dist": round(geo.haversine(centro, (p["lat"], p["lon"])))})
+
+            # 1) paradas próximas do ponto tocado (a API ignora o raio pedido,
+            #    então serve só como ponto de partida)
             try:
-                paradas = api.paradas_proximas(lat, lon, raio)
+                for p in api.paradas_proximas(lat, lon, raio):
+                    _add(p)
             except Exception as e:
                 log.debug(f"paradas próximas: {e}")
-                paradas = []
+            # 2) completa com as paradas das linhas monitoradas dentro do raio
+            try:
+                siglas = motor.linhas_observadas()[:40]
+            except Exception:
+                siglas = []
+            for sigla in siglas:
+                try:
+                    linha = api.linha_por_sigla(sigla)
+                    if not linha:
+                        continue
+                    for p in api.paradas_com_coordenadas(linha["cod"]):
+                        if geo.haversine(centro, (p["lat"], p["lon"])) <= raio:
+                            _add(p)
+                except Exception:
+                    continue
+            paradas.sort(key=lambda x: x["dist"])
             return self._json({"ok": True, "raio": raio, "paradas": paradas})
         if caminho == "/api/log":
             return self._json({"log": list(motor.log)})
