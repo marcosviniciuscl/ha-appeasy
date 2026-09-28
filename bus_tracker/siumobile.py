@@ -97,6 +97,7 @@ def configurar(cidade=None, base=None, praca=None, pacote=None):
         # troca de cidade invalida os caches
         _linhas_cache.update(ts=0.0, dados=[])
         _rota_cache.clear()
+        _proximas_cache.clear()
     log.info("SIUMobile: cidade=%s base=%s praca=%s pacote=%s",
              _estado["cidade"], _estado["base"], _estado["praca"], _estado["pacote"])
 
@@ -191,12 +192,21 @@ def paradas_da_linha(cod_linha):
     return d.get("paradas", [])
 
 
-def paradas_proximas(lat, lon, raio_m=1000):
-    """Paradas próximas a um ponto, COM coordenadas (x=lon, y=lat)."""
+def paradas_proximas(lat, lon, raio_m=1000, ttl=600):
+    """Paradas próximas a um ponto, COM coordenadas (x=lon, y=lat).
+
+    Cacheado por `ttl` (10 min) porque é chamado muitas vezes ao varrer o
+    traçado da linha para achar a parada de embarque.
+    """
     try:
         raio_m = max(100, int(raio_m))
     except (TypeError, ValueError):
         raio_m = 1000
+    chave = (round(float(lat), 4), round(float(lon), 4), raio_m)
+    agora = time.time()
+    cache = _proximas_cache.get(chave)
+    if cache and (agora - cache[0]) < ttl:
+        return cache[1]
     d = _jsonp(_get(f"/buscarParadasProximas/{lon}/{lat}/{raio_m}/retornoJSON"), "retornoJSON")
     saida = []
     for p in d.get("paradas", []):
@@ -209,6 +219,10 @@ def paradas_proximas(lat, lon, raio_m=1000):
             })
         except (KeyError, TypeError, ValueError):
             continue
+    _proximas_cache[chave] = (agora, saida)
+    if len(_proximas_cache) > 4000:
+        for k in sorted(_proximas_cache, key=lambda k: _proximas_cache[k][0])[:1000]:
+            _proximas_cache.pop(k, None)
     return saida
 
 
@@ -309,6 +323,7 @@ def previsoes_da_parada(cod_parada, acessiveis=False):
 
 _paradas_iti_cache = {}
 _paradas_linha_cache = {}
+_proximas_cache = {}
 
 
 def rota_do_itinerario(cod_it, ttl=6 * 3600):

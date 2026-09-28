@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34.1
+
+- Corrigido o **ponto de embarque**: agora ele é a parada **sobre o traçado que o
+  ônibus percorre** (mesma lógica do ETA), em vez da lista genérica de paradas da
+  linha — que muitas vezes apontava para uma parada distante/fora da rota.
+- Cache de `paradasProximas` (10 min) para não sobrecarregar a API ao varrer o
+  traçado.
+
 ## 0.34.0
 
 - **Destino só por ponto existente**: ao tocar no mapa, o app carrega as paradas

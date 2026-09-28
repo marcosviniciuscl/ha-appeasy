@@ -712,11 +712,20 @@ class Motor:
         ref = ref_pos or self.posicao(pessoa.get("entidade"))
         if not ref:
             return None
-        linha = api.linha_por_sigla(sigla)
+        # 1º) parada oficial que fica SOBRE o traçado que o ônibus percorre
+        #     (mesma lógica do ETA/alvo), para o ponto bater com a rota desenhada
         parada = None
-        mp = self._parada_mais_proxima(ref, linha)
-        if mp:
-            parada = mp[1]
+        try:
+            perto = self.paradas_da_linha_perto(ref, sigla)
+            if perto:
+                parada = perto[0]
+        except Exception as e:
+            log.debug(f"paradas sobre o traçado {sigla}: {e}")
+        # 2º) reserva: parada mais próxima da lista da linha (pode não estar na rota)
+        if not parada:
+            mp = self._parada_mais_proxima(ref, api.linha_por_sigla(sigla))
+            if mp:
+                parada = mp[1]
         if parada:
             destino, nome = (parada["lat"], parada["lon"]), parada["nome"]
         else:
