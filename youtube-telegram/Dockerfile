@@ -11,6 +11,7 @@ LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64|armv7|armhf" \
+  org.opencontainers.image.authors="Marcos <marcosviniciuscl@outlook.com>" \
   org.opencontainers.image.title="YouTube para Telegram" \
   org.opencontainers.image.description="Baixa vídeos e áudios do YouTube pelo Telegram, entrega no chat e usa o MinIO para arquivos grandes." \
   org.opencontainers.image.source="https://github.com/marcosviniciuscl/ha-appeasy" \

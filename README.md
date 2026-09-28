@@ -1,4 +1,4 @@
-# Apps do Marcos para Home Assistant
+# AppEasy — Apps para Home Assistant
 
 Coleção de **Apps** (antigos *add-ons*) para **Home Assistant OS** ou
 **Supervised**. Cada App fica na sua própria pasta deste repositório, com
@@ -66,3 +66,10 @@ do App.
 - Os Apps precisam de internet para funcionar.
 - Cada App guarda a configuração em `/data` e sobrevive a reinícios e
   atualizações.
+
+## Autor
+
+**Marcos** — [marcosviniciuscl@outlook.com](mailto:marcosviniciuscl@outlook.com)
+
+AppEasy é uma marca deste repositório; cada App mantém sua própria versão e
+documentação.
