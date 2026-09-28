@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.0
+
+- **Interface mobile**: mapa em tela cheia, barra de navegação inferior e
+  painéis deslizantes (bottom sheets) para a rota e os pontos de embarque.
+- Mesmo no desktop o mapa ocupa a tela toda, mantendo os botões.
+- **Ícone de ônibus** no mapa em vez do quadrado laranja.
+- A rota selecionada **não pisca mais** ao atualizar (só troca quando os dados
+  novos chegam).
+
 ## 0.25.0
 
 - Ao **tocar num ônibus no mapa**, o painel desenha a **rota do itinerário**
