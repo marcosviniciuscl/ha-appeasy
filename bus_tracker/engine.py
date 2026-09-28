@@ -692,6 +692,16 @@ class Motor:
                 "risco": risco,
                 "tempo_total_min": eta if (eta is not None and risco != "perdeu") else None,
             })
+        # está "acontecendo agora"? (dentro da janela do horário e com ônibus)
+        agora_bool, bus_id = False, None
+        try:
+            prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])))
+            janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
+            if prox and prox[1] <= janela and onibus:
+                agora_bool = True
+                bus_id = onibus[0]["id"]
+        except Exception:
+            pass
         # volta: também calcula onde descer (ponto perto da casa) e a caminhada
         destino_casa = None
         if sentido == "volta" and casa:
@@ -706,6 +716,7 @@ class Motor:
             "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
             "pos": {"lat": origem[0], "lon": origem[1]},
             "casa": destino_casa,
+            "agora": agora_bool, "bus_id": bus_id,
             "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
             "caminho": ponto["caminho"], "fonte": ponto["fonte"],
             "onibus": onibus,
@@ -906,25 +917,22 @@ class Motor:
         caminhada = info["ponto"]["tempo_min"]
         risco = {"ok": "dá tempo", "correr": "corra!", "perdeu": "pode perder",
                  "sem-previsao": "sem previsão"}.get(bus.get("risco"), "")
-        msg = f"Ônibus {info['linha']} em ~{eta:.0f} min · você {caminhada:.0f} min a pé · {risco}"
-        self._notificar(pessoa, f"Linha {info['linha']} · {info['ponto']['nome']}", msg, {
+        msg = f"{info['ponto']['tempo_min']:.0f} min a pé → ônibus ~{eta:.0f} min · {risco}"
+        self._notificar(pessoa, f"Linha {info['linha']}", msg, {
             "tag": f"trajeto_{info['pessoa_id']}",
             "group": f"trajeto_{info['pessoa_id']}",
             "channel": "Bus Tracker",
             "color": "#3d7dff",
             "notification_icon": "mdi:bus-clock",
+            "notification_icon_color": "#3d7dff",
             "live_update": True,
             "alert_once": True,
             "silent": True,
-            "critical_text": f"você {caminhada:.0f} min",
             "actions": [{"action": f"RASTREAR|{info['pessoa_id']}|{info['linha']}|{bus['id']}",
                          "title": "📡 Rastrear"}],
         })
 
     def push_rastreio(self, pessoa, rastreio, bus, alvo, eta, d, primeiro=False):
-        pct = 0
-        if rastreio.get("d0"):
-            pct = int(max(0, min(100, round((1 - d / rastreio["d0"]) * 100))))
         complemento, _ = self._texto_ponto(alvo, curto=True)
         msg = f"~{eta:.0f} min até você" if eta is not None else "chegando"
         if complemento:
@@ -941,12 +949,8 @@ class Motor:
                 "silent": not primeiro,        # iOS: atualização silenciosa
                 "alert_once": not primeiro,    # Android: alerta só uma vez
                 "sticky": True,                # Android: mantém ao tocar
-                "critical_text": _fmt_dist(d),
-                "progress": pct,
-                "progress_max": 100,
                 "notification_icon": "mdi:bus",
                 "notification_icon_color": "#FFB300",  # iOS
-                "progress_bar_color": "#FFB300",        # iOS
                 "color": "#FFB300",                      # Android
                 "actions": [{"action": f"PARAR|{pessoa['id']}", "title": "Parar rastreio"}],
             },

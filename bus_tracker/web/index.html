@@ -11,7 +11,7 @@
     --bg:#0e1014; --card:#171a21; --card2:#1e222b; --linha:rgba(255,255,255,.09);
     --txt:#e9ecf2; --txt2:#98a2b3; --acento:#f5a524; --azul:#3d7dff; --ok:#37b169; --erro:#e5484d;
     --panel:rgba(20,23,29,.82); --hdr-bg:rgba(14,16,20,.78); --nav-bg:rgba(14,16,20,.94);
-    --hdr:50px; --nav:56px; --r:14px;
+    --hdr:48px; --nav:50px; --r:14px;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#eef1f5; --card:#fff; --card2:#f3f4f7; --linha:rgba(0,0,0,.08);
@@ -69,10 +69,13 @@
   .meta{font-size:12.5px;color:var(--txt2)}
 
   /* ---------- painel lateral de detalhes (mapa) ---------- */
-  .detail{position:absolute;z-index:25;left:12px;right:12px;
-          bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 12px);
-          border-radius:20px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.5);
-          max-height:56vh;overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1)}
+  .detail{position:absolute;z-index:25;left:0;right:0;
+          bottom:calc(var(--nav) + env(safe-area-inset-bottom));
+          border-radius:20px 20px 0 0;padding:18px 14px 16px;
+          box-shadow:0 -12px 44px rgba(0,0,0,.5);
+          max-height:44vh;overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1)}
+  .detail::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
+                  width:40px;height:4px;border-radius:2px;background:var(--txt2);opacity:.45}
   @keyframes sobe{from{transform:translateY(16px);opacity:.3}to{transform:none;opacity:1}}
   .detail h2{font-size:15px;margin:0 0 10px;font-weight:680;display:flex;align-items:center;gap:8px}
   .detail .linha-titulo{display:flex;align-items:center;gap:10px}
@@ -88,13 +91,15 @@
   .tab-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:none;
            color:var(--txt2);cursor:pointer;font:inherit;transition:.15s}
   .tab-btn.on{color:var(--acento)}
+  .tab-btn .txt{display:block}
   .rail{display:none}
   nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:space-around;
       padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);
       backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
       border-top:1px solid var(--linha)}
-  nav .tab-btn{flex:1;flex-direction:column;gap:2px;font:600 9.5px/1 inherit;padding:7px 2px 6px}
-  nav .tab-btn .ic{width:20px;height:20px}
+  nav .tab-btn{flex:1;flex-direction:column;gap:2px;font:600 9.5px/1 inherit;padding:6px 2px}
+  nav .tab-btn .ic{width:22px;height:22px}
+  @media (max-width: 899px){ nav .tab-btn .txt{display:none} }
   nav .tab-btn.on{color:var(--acento)}
 
   /* ---------- conteúdo ---------- */
@@ -122,6 +127,7 @@
   button.bt.del{background:transparent;color:var(--erro);border:1px solid var(--linha);padding:7px 11px;font-size:12.5px}
   button.bt.sm{padding:8px 11px;font-size:12.5px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .grupo-titulo{font-weight:700;font-size:13px;color:var(--txt);margin:12px 2px 6px}
   .item{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--linha);border-radius:12px;
         margin-bottom:8px;background:var(--card2)}
   .item .nome{font-weight:600}
@@ -156,6 +162,21 @@
   .personmark .l{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
                  font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
                  border:1px solid rgba(255,255,255,.28)}
+
+  /* destaque do ônibus chegando + animação da caminhada */
+  .busmark.destaque .b{animation:pisca 1.1s ease-in-out infinite}
+  @keyframes pisca{0%,100%{box-shadow:0 0 0 0 rgba(61,125,255,.85)}50%{box-shadow:0 0 0 13px rgba(61,125,255,0)}}
+  .leaflet-container svg,.leaflet-container path{touch-action:none}
+  .leaflet-interactive.caminhando{stroke-dasharray:5 9;animation:corre .7s linear infinite}
+  @keyframes corre{to{stroke-dashoffset:-14}}
+  .leaflet-interactive.rotaDestaque{filter:drop-shadow(0 0 5px rgba(61,125,255,.9))}
+
+  @media (max-width: 899px){
+    .brand h1{font-size:14.5px}
+    .brand .sub{max-width:42vw}
+    .status #hdr-ha{display:none}
+    .status .pill{padding:4px 9px;font-size:11px}
+  }
 
   /* ---------- desktop ---------- */
   @media (min-width: 900px){
@@ -223,12 +244,11 @@
 </header>
 
 <aside class="rail glass">
-  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
-  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
-  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg>Trajetos</button>
-  <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
-  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
-  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
+  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg><span class="txt">Mapa</span></button>
+  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg><span class="txt">Ônibus</span></button>
+  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg><span class="txt">Trajetos</span></button>
+  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg><span class="txt">Pessoas</span></button>
+  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg><span class="txt">Ajustes</span></button>
 </aside>
 
 <!-- ============================= MAPA ============================= -->
@@ -330,36 +350,6 @@
     </div>
   </section>
 
-  <!-- ============================ AVISOS ============================ -->
-  <section id="s-avisos">
-    <div class="card">
-      <h2 id="av-titulo">Novo aviso</h2>
-      <label class="f">Linha (digite para buscar)</label>
-      <input id="av-linha" list="dl-linhas" placeholder="ex.: 085">
-      <label class="f">Avisar quem</label>
-      <div class="chips" id="av-pessoas"></div>
-      <label class="f">Dias da semana</label>
-      <div class="chips" id="av-dias"></div>
-      <div class="grid2">
-        <div><label class="f">A partir de</label><input type="time" id="av-inicio" value="06:30"></div>
-        <div><label class="f">Até</label><input type="time" id="av-fim" value="07:10"></div>
-      </div>
-      <div class="row">
-        <label class="chip" id="av-ativo-wrap"><input type="checkbox" id="av-ativo" checked> Ativo</label>
-      </div>
-      <div class="row">
-        <button class="bt" onclick="salvarRegra()">Salvar aviso</button>
-        <button class="bt sec" onclick="novaRegra()">Limpar</button>
-        <button class="bt sec" onclick="testarAgora()">Testar agora</button>
-      </div>
-      <div class="aviso" id="av-msg"></div>
-    </div>
-    <div class="card">
-      <h2>Avisos configurados</h2>
-      <div id="lista-regras"></div>
-    </div>
-  </section>
-
   <!-- =========================== PESSOAS =========================== -->
   <section id="s-pessoas">
     <div class="card">
@@ -385,7 +375,7 @@
   <!-- =========================== AJUSTES =========================== -->
   <section id="s-ajustes">
     <div class="card">
-      <h2>Comportamento dos avisos</h2>
+      <h2>Comportamento</h2>
       <div class="grid2">
         <div><label class="f">Avisar quando faltar (m)</label><input type="number" id="aj-limiar" step="100"></div>
         <div><label class="f">Intervalo mínimo entre avisos (min)</label><input type="number" id="aj-cooldown"></div>
@@ -435,12 +425,11 @@
 </main>
 
 <nav>
-  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg>Mapa</button>
-  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus</button>
-  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg>Trajetos</button>
-  <button class="tab-btn" data-t="avisos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bell"/></svg>Avisos</button>
-  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg>Pessoas</button>
-  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg>Ajustes</button>
+  <button class="tab-btn on" data-t="mapa"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map"/></svg><span class="txt">Mapa</span></button>
+  <button class="tab-btn" data-t="onibus"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-bus"/></svg><span class="txt">Ônibus</span></button>
+  <button class="tab-btn" data-t="trajetos"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg><span class="txt">Trajetos</span></button>
+  <button class="tab-btn" data-t="pessoas"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-account"/></svg><span class="txt">Pessoas</span></button>
+  <button class="tab-btn" data-t="ajustes"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-cog"/></svg><span class="txt">Ajustes</span></button>
 </nav>
 
 <script src="vendor/leaflet.js"></script>
@@ -450,8 +439,9 @@
 const BASE = location.pathname.replace(/\/$/, "") + "/";
 const DIAS = ["seg","ter","qua","qui","sex","sáb","dom"];
 let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
-let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer;
+let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer, destaqueLayer;
 let mkOnibus = {};
+let busesDestaque = new Set();
 let onibusSel = null, rotaAjustada = false, marcandoCasa = false;
 let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
@@ -489,15 +479,14 @@ async function carregarEstado(){
   const nomeCidade = (est.cidade && est.cidade.nome) ? est.cidade.nome + " · " : "";
   document.getElementById("hdr-sub").textContent =
     nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
-  renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects();
+  renderMapaChips(); renderPessoas(); renderAjustes(); preencherSelects();
   renderCidade(); renderTrajetos(); renderCasa();
   const st = est.status||{};
   document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
   document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
-  document.getElementById("hdr-ciclo").textContent = st.ultimo_ciclo ? "leitura "+fmtHora(st.ultimo_ciclo) : "aguardando";
+  document.getElementById("hdr-ciclo").textContent = st.ultimo_ciclo ? fmtHora(st.ultimo_ciclo) : "—";
   document.getElementById("tag-obs").textContent = (st.onibus||0)+" no mapa";
   document.getElementById("tag-rastreios").textContent = (st.rastreios||0)+" ativo(s)";
-  if (st.usuario) document.getElementById("hdr-ciclo").textContent += " · "+st.usuario;
 }
 
 function preencherSelects(){
@@ -592,18 +581,23 @@ function renderDiasTrajeto(sel){
 function renderTrajetos(){
   const el = document.getElementById("lista-trajetos-cad");
   if (!el) return;
-  if (!(est.trajetos||[]).length){ el.innerHTML = '<div class="vazio">Nenhum trajeto cadastrado ainda.</div>'; return; }
-  el.innerHTML = est.trajetos.map(t=>{
-    const p = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa;
-    const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
-    return `<div class="item"><div>
-      <div class="nome">${esc(p)} · linha ${esc(t.linha)} (${t.sentido==="volta"?"volta":"ida"})</div>
-      <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
-    </div><div class="dir">
-      <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
-      <button class="bt sec sm" onclick="editarTrajeto('${t.id}')">Editar</button>
-      <button class="bt del" onclick="apagarTrajeto('${t.id}')">Excluir</button>
-    </div></div>`;
+  const lista = est.trajetos||[];
+  if (!lista.length){ el.innerHTML = '<div class="vazio">Nenhum trajeto cadastrado ainda.</div>'; return; }
+  const porPessoa = {};
+  lista.forEach(t=>{ (porPessoa[t.pessoa] = porPessoa[t.pessoa]||[]).push(t); });
+  el.innerHTML = Object.keys(porPessoa).map(pid=>{
+    const nome = (est.pessoas.find(x=>x.id===pid)||{}).nome || pid;
+    return `<div class="grupo-titulo">${esc(nome)}</div>` + porPessoa[pid].map(t=>{
+      const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
+      return `<div class="item"><div>
+        <div class="nome">Linha ${esc(t.linha)} · ${t.sentido==="volta"?"volta para casa":"ida de casa"}</div>
+        <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(dias)}</div>
+      </div><div class="dir">
+        <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
+        <button class="bt sec sm" onclick="editarTrajeto('${t.id}')">Editar</button>
+        <button class="bt del" onclick="apagarTrajeto('${t.id}')">Excluir</button>
+      </div></div>`;
+    }).join("");
   }).join("");
 }
 function novoTrajeto(){
@@ -664,8 +658,8 @@ function toggleTrajetos(){
 const BUS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,11H6V6H18M16.5,17A1.5,1.5 0 0,1 15,15.5A1.5,1.5 0 0,1 16.5,14A1.5,1.5 0 0,1 18,15.5A1.5,1.5 0 0,1 16.5,17M7.5,17A1.5,1.5 0 0,1 6,15.5A1.5,1.5 0 0,1 7.5,14A1.5,1.5 0 0,1 9,15.5A1.5,1.5 0 0,1 7.5,17M4,16C4,16.88 4.39,17.67 5,18.22V20A1,1 0 0,0 6,21H7A1,1 0 0,0 8,20V19H16V20A1,1 0 0,0 17,21H18A1,1 0 0,0 19,20V18.22C19.61,17.67 20,16.88 20,16V6C20,2.5 16.42,2 12,2C7.58,2 4,2.5 4,6V16Z"/></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>';
 const HOME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
-function busIcon(b, sel){
-  const cls = (b.em_movimento ? "" : " parado") + (sel ? " sel" : "");
+function busIcon(b, sel, destaque){
+  const cls = (b.em_movimento ? "" : " parado") + (sel ? " sel" : "") + (destaque ? " destaque" : "");
   const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)}` : "";
   const html = `<div class="busmark${cls}"><div class="b">${BUS_SVG}</div><div class="l">${esc(b.linha)}${vel}</div></div>`;
   return L.divIcon({className:"", html, iconSize:[0,0]});
@@ -699,8 +693,9 @@ function iniciarMapa(){
   L.tileLayer(BASE + "api/tile/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:"© OpenStreetMap"
   }).addTo(mapa);
-  camadaOnibus = L.layerGroup().addTo(mapa);
   camadaOutros = L.layerGroup().addTo(mapa);
+  destaqueLayer = L.layerGroup().addTo(mapa);
+  camadaOnibus = L.layerGroup().addTo(mapa);
   rotaSelLayer = L.layerGroup().addTo(mapa);
   casaLayer = L.layerGroup().addTo(mapa);
   mapa.on("click", aoClicarMapa);
@@ -713,12 +708,16 @@ async function carregarMapa(primeiro){
   const sel = new Set((est.mapa.onibus||[]).map(norm));
   const exibidos = (d.onibus||[]).filter(b=> sel.size===0 || sel.has(norm(b.linha)));
 
+  // ônibus de trajetos que estão "acontecendo agora" ficam em destaque
+  busesDestaque = new Set((d.trajetos||[]).filter(t=>t.agora && t.bus_id).map(t=>String(t.bus_id)));
+
   const vistos = new Set();
   exibidos.forEach(b=>{
     vistos.add(b.id);
     const e = mkOnibus[b.id];
+    const dx = busesDestaque.has(String(b.id));
     if (!e){
-      const mk = L.marker([b.lat,b.lon], {icon:busIcon(b, b.id===onibusSel), bubblingMouseEvents:false});
+      const mk = L.marker([b.lat,b.lon], {icon:busIcon(b, b.id===onibusSel, dx), bubblingMouseEvents:false});
       mk.bindPopup(popupBus(b));
       mk.on("click", ()=>selecionarOnibus(b.id));
       mkOnibus[b.id] = {mk, b};
@@ -726,7 +725,7 @@ async function carregarMapa(primeiro){
     } else {
       e.b = b;
       e.mk.setLatLng([b.lat,b.lon]);
-      e.mk.setIcon(busIcon(b, b.id===onibusSel));
+      e.mk.setIcon(busIcon(b, b.id===onibusSel, dx));
       if (e.mk.getPopup()) e.mk.setPopupContent(popupBus(b));
     }
   });
@@ -751,14 +750,15 @@ async function carregarMapa(primeiro){
     const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
       : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
     if (caminho.length>1){
-      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:4, opacity:.8, bubblingMouseEvents:false}));
+      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:4, opacity:.85,
+        className:"caminhando", interactive:false}));
     }
     if (p){
       camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
         .bindPopup(`<b>${esc(t.pessoa)}</b><br>linha ${esc(t.linha)} · ${esc(p.nome)}<br>${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`));
     }
     if (t.casa){
-      camadaOutros.addLayer(L.polyline(t.casa.caminho||[], {color:"#37b169", weight:2, opacity:.5, dashArray:"3 7", bubblingMouseEvents:false}));
+      camadaOutros.addLayer(L.polyline(t.casa.caminho||[], {color:"#37b169", weight:2, opacity:.5, dashArray:"3 7", interactive:false}));
       camadaOutros.addLayer(L.circleMarker([t.casa.lat,t.casa.lon], {radius:5, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
         .bindPopup(`<b>${esc(t.pessoa)}</b><br>desça em ${esc(t.casa.nome)}<br>${fmtDist(t.casa.dist_m)} · ~${Math.round(t.casa.tempo_min)} min até casa`));
     }
@@ -772,6 +772,17 @@ async function carregarMapa(primeiro){
       html:`<div class="personmark"><div class="p" style="background:#37b169">${HOME_SVG}</div></div>`});
     casaLayer.addLayer(L.marker([d.casa.lat,d.casa.lon], {icon:hic, bubblingMouseEvents:false}).bindPopup("<b>Casa</b>"));
   }
+
+  // rota azul do ônibus que está chegando (trajeto ativo agora)
+  destaqueLayer.clearLayers();
+  busesDestaque.forEach(bid=>{
+    api("/api/onibus/"+encodeURIComponent(bid)).then(r=>{
+      if (r && r.ok && (r.rota||[]).length>1){
+        L.polyline(r.rota, {color:"#3d7dff", weight:6, opacity:.9,
+          className:"rotaDestaque", interactive:false}).addTo(destaqueLayer);
+      }
+    }).catch(()=>{});
+  });
   const rotas = d.rotas||{};
   Object.keys(rotas).forEach(sigla=>{
     rotas[sigla].forEach(pts=>{
@@ -807,7 +818,7 @@ async function carregarMapa(primeiro){
 const nomeCurto = s => { s = String(s||""); return s.length>42 ? s.slice(0,41).trim()+"…" : s; };
 const textoEta = p => p.passou ? "já passou" : (p.prev ? esc(p.prev) : (p.eta_min!=null ? "~"+Math.round(p.eta_min)+" min" : "?"));
 function pintarSelecao(){
-  Object.values(mkOnibus).forEach(e=> e.mk.setIcon(busIcon(e.b, e.b.id===onibusSel)));
+  Object.values(mkOnibus).forEach(e=> e.mk.setIcon(busIcon(e.b, e.b.id===onibusSel, busesDestaque.has(String(e.b.id)))));
 }
 async function selecionarOnibus(id){
   onibusSel = id;
@@ -827,7 +838,7 @@ async function desenharRotaSel(){
   const grupo = L.layerGroup();
   let bounds = null;
   if ((d.rota||[]).length > 1){
-    const pl = L.polyline(d.rota, {color:"#3d7dff", weight:5, opacity:.85, bubblingMouseEvents:false}).addTo(grupo);
+    const pl = L.polyline(d.rota, {color:"#3d7dff", weight:5, opacity:.85, interactive:false}).addTo(grupo);
     bounds = pl.getBounds();
   }
   paradas.forEach(p=>{
@@ -936,88 +947,6 @@ function rastrear(linha, bus){
 async function salvarMapa(){
   await api("/api/mapa", {onibus:[...selLinhas], pessoas:[...selPessoas], rotas:true, pontos:true});
   await carregarEstado(); carregarMapa();
-}
-
-/* ------------------------------------------------ avisos */
-function renderRegras(){
-  const el = document.getElementById("lista-regras");
-  if (!(est.regras||[]).length){ el.innerHTML = '<div class="vazio">Nenhum aviso configurado ainda.</div>'; return; }
-  el.innerHTML = est.regras.map(r=>{
-    const nomes = (r.pessoas||[]).map(id => (est.pessoas.find(p=>p.id===id)||{}).nome || id).join(", ");
-    const dias = (r.dias||[]).length===7 ? "todos os dias" : (r.dias||[]).map(d=>DIAS[d]).join(" ");
-    return `<div class="item"><div>
-      <div class="nome">Linha ${esc(r.linha)} → ${esc(nomes)}</div>
-      <div class="meta">${esc(dias)} · ${esc(r.inicio)}–${esc(r.fim)}</div>
-    </div><div class="dir">
-      <span class="pill ${r.ativo?"ok":""}">${r.ativo?"ativo":"pausado"}</span>
-      <button class="bt sec sm" onclick="editarRegra('${r.id}')">Editar</button>
-      <button class="bt del" onclick="apagarRegra('${r.id}')">Excluir</button>
-    </div></div>`;
-  }).join("");
-}
-function renderDiasChips(sel){
-  const cx = document.getElementById("av-dias");
-  cx.innerHTML = DIAS.map((d,i)=>`<label class="chip ${sel.includes(i)?"on":""}" data-d="${i}">
-     <input type="checkbox" ${sel.includes(i)?"checked":""}>${d}</label>`).join("");
-  cx.querySelectorAll(".chip").forEach(c=>{
-    c.onclick = e=>{ e.preventDefault(); c.classList.toggle("on"); c.querySelector("input").checked = c.classList.contains("on"); };
-  });
-}
-function renderPessoasChips(sel){
-  const cx = document.getElementById("av-pessoas");
-  cx.innerHTML = (est.pessoas||[]).map(p=>`<label class="chip ${sel.includes(p.id)?"on":""}" data-p="${p.id}">
-      <input type="checkbox" ${sel.includes(p.id)?"checked":""}>${esc(p.nome)}</label>`).join("") ||
-    '<div class="vazio">Cadastre uma pessoa na aba Pessoas.</div>';
-  cx.querySelectorAll(".chip").forEach(c=>{
-    c.onclick = e=>{ e.preventDefault(); c.classList.toggle("on"); c.querySelector("input").checked = c.classList.contains("on"); };
-  });
-}
-function novaRegra(){
-  editandoRegra = null;
-  document.getElementById("av-titulo").textContent = "Novo aviso";
-  document.getElementById("av-linha").value = "";
-  document.getElementById("av-inicio").value = "06:30";
-  document.getElementById("av-fim").value = "07:10";
-  document.getElementById("av-ativo").checked = true;
-  renderPessoasChips([]); renderDiasChips([1,2,3,4,5]);
-}
-function editarRegra(id){
-  const r = est.regras.find(x=>x.id===id); if (!r) return;
-  editandoRegra = id;
-  document.getElementById("av-titulo").textContent = "Editando aviso · linha "+r.linha;
-  document.getElementById("av-linha").value = r.linha;
-  document.getElementById("av-inicio").value = r.inicio;
-  document.getElementById("av-fim").value = r.fim;
-  document.getElementById("av-ativo").checked = !!r.ativo;
-  renderPessoasChips(r.pessoas||[]); renderDiasChips(r.dias||[]);
-  document.getElementById("s-avisos").scrollIntoView({behavior:"smooth"});
-}
-async function salvarRegra(){
-  const dias = [...document.querySelectorAll("#av-dias .chip.on")].map(c=>parseInt(c.dataset.d,10));
-  const pessoas = [...document.querySelectorAll("#av-pessoas .chip.on")].map(c=>c.dataset.p);
-  const regra = {
-    id: editandoRegra, ativo: document.getElementById("av-ativo").checked,
-    linha: document.getElementById("av-linha").value,
-    pessoas, dias,
-    inicio: document.getElementById("av-inicio").value,
-    fim: document.getElementById("av-fim").value
-  };
-  const r = await api("/api/regras", {regra});
-  if (r.ok){ msg("av-msg","Aviso salvo."); novaRegra(); await carregarEstado(); }
-  else msg("av-msg", r.erro||"erro ao salvar", false);
-}
-async function apagarRegra(id){
-  if (!confirm("Excluir este aviso?")) return;
-  await api("/api/regras/"+id, {});
-  await carregarEstado();
-}
-async function testarAgora(){
-  const linha = document.getElementById("av-linha").value;
-  const pessoas = [...document.querySelectorAll("#av-pessoas .chip.on")].map(c=>c.dataset.p);
-  if (!linha || !pessoas.length) return msg("av-msg","Escolha a linha e ao menos uma pessoa.", false);
-  const r = await api("/api/agora", {pessoa: pessoas[0], linha});
-  if (r.ok) msg("av-msg", `Enviado: veículo ${r.veiculo} a ${fmtDist(r.dist_ponto)} · ~${Math.round(r.eta_min)} min do ponto ${r.ponto.nome}.`);
-  else msg("av-msg", r.erro||"não deu para testar agora", false);
 }
 
 /* ------------------------------------------------ pessoas */
@@ -1138,7 +1067,7 @@ setInterval(carregarEstado, 60000);
 
 (async function init(){
   await carregarEstado();
-  novaRegra(); novaPessoa(); novoTrajeto();
+  novaPessoa(); novoTrajeto();
   await carregarMapa(true);
   carregarOnibus();
   laçoMapa();

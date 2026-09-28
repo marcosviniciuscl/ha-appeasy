@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.0
+
+- Removida a aba **Avisos** (os trajetos cobrem os avisos).
+- Lista de **trajetos agrupada por pessoa**.
+- Corrigido o **gesto** no mapa: as rotas desenhadas não capturam mais o toque.
+- Menu do celular só com **ícones**; topo mais compacto (hora do ciclo minúscula).
+- **Modal estilo Uber**: painel sobe de baixo sem tomar a tela e o mapa continua
+  visível.
+- Notificação **ao vivo** mais enxuta (só ícone/cor).
+- Quando o trajeto está no horário, o **ônibus pisca** e a **rota dele fica azul
+  em destaque**; a **caminhada até o ponto** ganhou animação de deslocamento.
+
 ## 0.29.0
 
 - **Zoom por gesto** (pinça) e por duplo toque no mapa, além de botões +/−.
