@@ -202,18 +202,17 @@
   input[list]::-webkit-calendar-picker-indicator{opacity:.45}
 
   /* destaque do ônibus chegando + animação da caminhada */
-  .busmark.destaque{z-index:5}
-  .busmark.destaque .b{background:var(--azul);color:#fff;border-color:#fff;
+  .busmark.destaque{--cor:#22c55e;z-index:5}
+  .busmark.destaque.risco-correr{--cor:var(--acento)}
+  .busmark.destaque.risco-perdeu{--cor:var(--erro)}
+  .busmark.destaque .b{background:var(--cor);color:#fff;border-color:#fff;
                        animation:pisca 1s ease-in-out infinite}
-  .busmark.destaque::after{content:"";position:absolute;left:-16px;top:-16px;width:32px;height:32px;
-                           border-radius:50%;border:3px solid var(--azul);pointer-events:none;
-                           animation:anel 1.2s ease-out infinite}
-  @keyframes pisca{
-    0%,100%{box-shadow:0 0 0 0 rgba(61,125,255,.9),0 0 0 3px rgba(61,125,255,.95);opacity:1}
-    50%{box-shadow:0 0 0 16px rgba(61,125,255,0),0 0 0 3px rgba(61,125,255,.3);opacity:.72}
-  }
+  .busmark.destaque .b::after{content:"";position:absolute;inset:0;border-radius:50%;
+                              border:3px solid var(--cor);pointer-events:none;
+                              animation:anel 1.2s ease-out infinite}
+  @keyframes pisca{0%,100%{opacity:1}50%{opacity:.72}}
   @keyframes anel{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.3);opacity:0}}
-  .busmark.destaque .l{background:var(--azul);border-color:#fff}
+  .busmark.destaque .l{background:var(--cor);border-color:#fff}
   .leaflet-container svg,.leaflet-container path{touch-action:none}
   .leaflet-container .caminhando{stroke-dasharray:5 9;animation:corre .7s linear infinite}
   @keyframes corre{to{stroke-dashoffset:-14}}
@@ -544,6 +543,7 @@ let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
 let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer, destaqueLayer, destinoPickLayer;
 let mkOnibus = {};
 let busesDestaque = new Set();
+let riscoDestaque = {};
 let onibusSel = null, rotaAjustada = false, marcandoCasa = false;
 let marcandoDestino = false, destinosPick = [], destinoEscolhido = null;
 let editandoRegra = null, editandoPessoa = null;
@@ -837,8 +837,10 @@ function toggleTrajetos(){
 const BUS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,11H6V6H18M16.5,17A1.5,1.5 0 0,1 15,15.5A1.5,1.5 0 0,1 16.5,14A1.5,1.5 0 0,1 18,15.5A1.5,1.5 0 0,1 16.5,17M7.5,17A1.5,1.5 0 0,1 6,15.5A1.5,1.5 0 0,1 7.5,14A1.5,1.5 0 0,1 9,15.5A1.5,1.5 0 0,1 7.5,17M4,16C4,16.88 4.39,17.67 5,18.22V20A1,1 0 0,0 6,21H7A1,1 0 0,0 8,20V19H16V20A1,1 0 0,0 17,21H18A1,1 0 0,0 19,20V18.22C19.61,17.67 20,16.88 20,16V6C20,2.5 16.42,2 12,2C7.58,2 4,2.5 4,6V16Z"/></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>';
 const HOME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
-function busIcon(b, sel, destaque){
-  const cls = (b.em_movimento ? "" : " parado") + (sel ? " sel" : "") + (destaque ? " destaque" : "");
+const corRisco = r => r==="perdeu" ? "#e5484d" : (r==="correr" ? "#f5a524" : "#22c55e");
+function busIcon(b, sel, destaque, risco){
+  const cls = (b.em_movimento ? "" : " parado") + (sel ? " sel" : "") +
+              (destaque ? " destaque risco-" + (risco || "ok") : "");
   const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)}` : "";
   const html = `<div class="busmark${cls}"><div class="b">${BUS_SVG}</div><div class="l">${esc(b.linha)}${vel}</div></div>`;
   return L.divIcon({className:"", html, iconSize:[0,0]});
@@ -978,7 +980,13 @@ async function carregarMapa(primeiro){
   // destaca o PRÓXIMO ônibus que passa no ponto de cada trajeto (indo ao destino)
   const comBus = (d.trajetos||[]).filter(t=>t.bus_id);
   const idsDestaque = new Set();
-  comBus.forEach(t=>idsDestaque.add(String(t.bus_id)));
+  riscoDestaque = {};
+  comBus.forEach(t=>{
+    const id = String(t.bus_id);
+    idsDestaque.add(id);
+    const b0 = (t.onibus||[])[0];
+    riscoDestaque[id] = b0 ? b0.risco : "";
+  });
   busesDestaque = idsDestaque;
   const linhasAtivas = new Set(comBus.map(t=>norm(t.linha)));
   // o ônibus do trajeto ativo aparece mesmo que a linha não esteja selecionada
@@ -991,7 +999,7 @@ async function carregarMapa(primeiro){
     const e = mkOnibus[b.id];
     const dx = busesDestaque.has(String(b.id));
     if (!e){
-      const mk = L.marker([b.lat,b.lon], {icon:busIcon(b, b.id===onibusSel, dx),
+      const mk = L.marker([b.lat,b.lon], {icon:busIcon(b, b.id===onibusSel, dx, riscoDestaque[String(b.id)]),
         bubblingMouseEvents:false, zIndexOffset: dx?1000:0});
       mk.bindPopup(popupBus(b));
       mk.on("click", ()=>selecionarOnibus(b.id));
@@ -1000,7 +1008,7 @@ async function carregarMapa(primeiro){
     } else {
       e.b = b;
       e.mk.setLatLng([b.lat,b.lon]);
-      e.mk.setIcon(busIcon(b, b.id===onibusSel, dx));
+      e.mk.setIcon(busIcon(b, b.id===onibusSel, dx, riscoDestaque[String(b.id)]));
       e.mk.setZIndexOffset(dx?1000:0);
       if (e.mk.getPopup()) e.mk.setPopupContent(popupBus(b));
     }
@@ -1026,6 +1034,8 @@ async function carregarMapa(primeiro){
     const p = t.ponto;
     const longe = !!t.longe;
     const ativo = !!t.bus_id && !longe;
+    const b0 = (t.onibus||[])[0];
+    const corAtivo = corRisco(b0 ? b0.risco : "");
     const corPonto = longe ? "#8a94a6" : "#37b169";
     const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
       : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
@@ -1043,10 +1053,10 @@ async function carregarMapa(primeiro){
           .bindPopup(popIco("ic-marker", "#8a94a6", esc(p.nome),
             `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · LONGE (limite ${fmtDist(t.dist_max_m||0)})`)));
       } else if (ativo){
-        // ponto de embarque do trajeto em andamento: borda azul piscando
-        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:4,
-          fillColor:"#3d7dff", fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
-          .bindPopup(popIco("ic-marker", "#3d7dff", esc(p.nome),
+        // ponto de embarque do trajeto em andamento: borda piscando na cor do risco
+        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:corAtivo, weight:4,
+          fillColor:corAtivo, fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
+          .bindPopup(popIco("ic-marker", corAtivo, esc(p.nome),
             `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`)));
       } else {
         camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
@@ -1070,15 +1080,17 @@ async function carregarMapa(primeiro){
       .bindPopup(popIco("ic-home", "#37b169", "Casa", "Zona de referência")));
   }
 
-  // rota azul do ônibus que está chegando (trajeto ativo agora)
+  // trecho do ônibus destacado: só de onde ele está até o ponto de embarque
   destaqueLayer.clearLayers();
-  busesDestaque.forEach(bid=>{
-    api("/api/onibus/"+encodeURIComponent(bid)).then(r=>{
-      if (r && r.ok && (r.rota||[]).length>1){
-        L.polyline(r.rota, {color:"#3d7dff", weight:6, opacity:.9,
-          className:"rotaDestaque", interactive:false}).addTo(destaqueLayer);
-      }
-    }).catch(()=>{});
+  (d.trajetos||[]).forEach(t=>{
+    if (!t.bus_id || t.longe) return;
+    const b = (t.onibus||[])[0];
+    const trecho = b && b.trecho;
+    if (!trecho || trecho.length < 2) return;
+    const cor = corRisco(b.risco);
+    L.polyline(trecho, {color:cor, weight:6, opacity:.9, interactive:false}).addTo(destaqueLayer);
+    L.polyline(trecho, {color:"#ffffff", weight:3, opacity:.9,
+      className:"rotaAnim", interactive:false}).addTo(destaqueLayer);
   });
   const rotas = d.rotas||{};
   Object.keys(rotas).forEach(sigla=>{
@@ -1125,7 +1137,8 @@ async function carregarMapa(primeiro){
 const nomeCurto = s => { s = String(s||""); return s.length>42 ? s.slice(0,41).trim()+"…" : s; };
 const textoEta = p => p.passou ? "já passou" : (p.prev ? esc(p.prev) : (p.eta_min!=null ? "~"+Math.round(p.eta_min)+" min" : "?"));
 function pintarSelecao(){
-  Object.values(mkOnibus).forEach(e=> e.mk.setIcon(busIcon(e.b, e.b.id===onibusSel, busesDestaque.has(String(e.b.id)))));
+  Object.values(mkOnibus).forEach(e=> e.mk.setIcon(busIcon(e.b, e.b.id===onibusSel,
+    busesDestaque.has(String(e.b.id)), riscoDestaque[String(e.b.id)])));
 }
 async function selecionarOnibus(id){
   onibusSel = id;

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.41.0
+
+- **Ponto de embarque correto**: a parada agora é casada pelo **itinerário** do
+  ônibus (não por projeção geométrica). Antes podia escolher uma parada de rua
+  paralela onde o ônibus não para; agora é sempre um ponto em que o ônibus que
+  vai ao destino realmente para.
+- Escolhe a **parada mais próxima que tenha um ônibus indo ao destino** (se
+  nenhuma tiver ônibus agora, mostra a mais próxima ainda).
+- **Destaque em verde**: o ônibus e o ponto ficam verdes; ficam **laranja** em
+  "corra" e **vermelho** quando não dá mais tempo.
+- A rota destacada mostra só o **trecho do ônibus até o seu ponto** (não o
+  itinerário inteiro).
+- Anel pulsante do ônibus **centralizado**.
+
 ## 0.40.0
 
 - **Destaque independe do horário**: o **próximo ônibus** que passa no ponto indo
