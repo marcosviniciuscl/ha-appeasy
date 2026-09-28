@@ -124,9 +124,9 @@
   main section{display:none}
   main section.on{display:block}
   /* esconde a barra de rolagem (o scroll continua funcionando no toque) */
-  main,.detail,.log,body,html{scrollbar-width:none;-ms-overflow-style:none}
+  main,.detail,.log,.timeline,body,html{scrollbar-width:none;-ms-overflow-style:none}
   main::-webkit-scrollbar,.detail::-webkit-scrollbar,.log::-webkit-scrollbar,
-  body::-webkit-scrollbar,html::-webkit-scrollbar{width:0;height:0;display:none}
+  .timeline::-webkit-scrollbar,body::-webkit-scrollbar,html::-webkit-scrollbar{width:0;height:0;display:none}
 
   .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:12px;margin-bottom:10px}
   .card h2{font-size:14px;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
@@ -251,6 +251,26 @@
   .prox-parada .p-ic{width:26px;height:26px;border-radius:8px;background:var(--card2);border:1px solid var(--linha);
                      display:grid;place-items:center;flex:0 0 auto}
   .prox-parada .p-ic svg{width:15px;height:15px;fill:var(--azul)}
+
+  /* ---------- linha do tempo das paradas ---------- */
+  .timeline{position:relative;margin:2px 0 6px;max-height:46vh;overflow:auto}
+  .tl-row{position:relative;display:flex;gap:10px;align-items:flex-start;padding:7px 4px 7px 0;
+          cursor:pointer;border-radius:10px}
+  .tl-row:hover{background:var(--card2)}
+  .tl-row::before{content:"";position:absolute;left:8px;top:18px;bottom:-9px;width:2px;background:var(--linha)}
+  .tl-row:last-child::before{display:none}
+  .tl-dot{position:relative;z-index:1;width:14px;height:14px;border-radius:50%;flex:0 0 auto;margin-top:3px;
+          border:3px solid var(--txt2);background:var(--card);box-sizing:border-box}
+  .tl-row.passou{opacity:.5}
+  .tl-row.passou .tl-dot{background:var(--txt2);border-color:var(--txt2)}
+  .tl-row.atual .tl-dot{background:var(--acento);border-color:var(--acento);
+                        box-shadow:0 0 0 4px rgba(245,165,36,.25)}
+  .tl-txt{min-width:0;font-size:13px;line-height:1.3}
+  .tl-txt b{font-weight:600;color:var(--txt)}
+  .tl-row.atual .tl-txt b{color:var(--acento)}
+  .tl-tag{margin-left:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+          color:#20160a;background:var(--acento);border-radius:999px;padding:1px 7px;vertical-align:middle}
+  .leaflet-container .pontoFoco{animation:piscaPonto 1s ease-in-out infinite}
 
   @media (max-width: 899px){
     .status .pill{padding:4px 9px;font-size:11px}
@@ -557,6 +577,7 @@ let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
 let selLinhasTrajeto = new Set();
 let paradasSelList = [], paradasSelLinha = "";
+let rotaSelMarkers = [], focoParadaMk = null;
 
 /* ------------------------------------------------ navegação */
 function trocarAba(t){
@@ -1207,19 +1228,33 @@ async function desenharRotaSel(){
     // tracinho animado no sentido em que o ônibus está indo
     L.polyline(d.rota, {color:"#ffffff", weight:3, opacity:.9, className:"rotaAnim", interactive:false}).addTo(grupo);
   }
+  rotaSelMarkers = [];
   paradas.forEach((p, idx)=>{
     const cor = p.passou ? "#8a94a6" : "#3d7dff";
     const info = p.passou ? "Já passou" : `${textoEta(p)}${p.dist_m!=null?" · "+fmtDist(p.dist_m):""}`;
     const acao = `<div style="margin-top:9px"><button class="bt sm" onclick="criarTrajetoNoPonto(${idx})">Criar trajeto com este destino</button></div>`;
-    L.circleMarker([p.lat,p.lon], {radius:5, color:cor, weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
+    const mk = L.circleMarker([p.lat,p.lon], {radius:5, color:cor, weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
       .bindPopup(popIco("ic-marker", cor, esc(p.nome), info) + acao)
       .addTo(grupo);
+    rotaSelMarkers[idx] = mk;
   });
   rotaSelLayer.clearLayers();
   grupo.eachLayer(l=>rotaSelLayer.addLayer(l));
 
-  const prox = paradas.filter(p=>!p.passou)
-    .sort((a,b)=>(a.eta_min==null?1e9:a.eta_min)-(b.eta_min==null?1e9:b.eta_min)).slice(0,6);
+  // linha do tempo: todos os pontos (já passaram + os que faltam até o fim)
+  const idxProx = paradas.findIndex(p=>!p.passou);
+  const nPassou = paradas.filter(p=>p.passou).length;
+  const linhas = paradas.map((p, idx)=>{
+    const cls = p.passou ? "passou" : (idx===idxProx ? "atual" : "");
+    const eta = p.passou ? "já passou" : textoEta(p);
+    const dist = p.dist_m!=null ? " · "+fmtDist(p.dist_m) : "";
+    const tag = idx===idxProx ? '<span class="tl-tag">próximo</span>' : "";
+    return `<div class="tl-row ${cls}" onclick="focarParada(${idx})">
+      <span class="tl-dot"></span>
+      <span class="tl-txt"><b>${esc(nomeCurto(p.nome))}</b>${tag}
+        <span class="meta">${esc(eta)}${dist}</span></span>
+    </div>`;
+  }).join("");
   const info = document.getElementById("rota-info");
   info.style.display = "block";
   info.innerHTML = `
@@ -1230,15 +1265,21 @@ async function desenharRotaSel(){
     ${o.sentido ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-map"/></svg><span>${esc(o.sentido)}</span></div>` : ""}
     ${o.destino ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-flag"/></svg><span>Destino: <b>${esc(o.destino)}</b></span></div>` : ""}
     ${o.acessivel===true ? `<div class="icline"><svg viewBox="0 0 24 24"><use href="#ic-wheel"/></svg><span>Veículo acessível</span></div>` : ""}
-    ${prox.length ? `<div class="sec-title" style="margin:12px 0 2px">Crie um trajeto por uma parada</div>` +
-      prox.map(p=>`<div class="prox-parada">
-        <span class="p-ic"><svg viewBox="0 0 24 24"><use href="#ic-marker"/></svg></span>
-        <span style="min-width:0">${esc(nomeCurto(p.nome))}<br><span class="meta">${fmtDist(p.dist_m)}</span></span>
-        <span class="eta">${textoEta(p)}</span>
-        <button class="bt sm" style="margin-left:8px" onclick="criarTrajetoNoPonto(${paradas.indexOf(p)})">+ trajeto</button>
-      </div>`).join("")
-      : '<div class="meta" style="margin-top:8px">Sem paradas previstas.</div>'}`;
+    <div class="sec-title" style="margin:12px 0 2px">Paradas · ${nPassou} passaram, ${paradas.length-nPassou} restantes</div>
+    <div class="timeline">${linhas || '<div class="meta">Sem paradas previstas.</div>'}</div>
+    <p class="hint">Toque num ponto para realçá-lo no mapa; no balão, use "Criar trajeto com este destino".</p>`;
   if (bounds && !rotaAjustada){ mapa.fitBounds(bounds, {padding:[40,40]}); rotaAjustada = true; }
+}
+
+function focarParada(idx){
+  const p = paradasSelList[idx]; if (!p || p.lat == null) return;
+  if (mapa) mapa.setView([p.lat,p.lon], Math.max(mapa.getZoom(), 15), {animate:true});
+  if (focoParadaMk && mapa) mapa.removeLayer(focoParadaMk);
+  focoParadaMk = L.circleMarker([p.lat,p.lon], {radius:16, color:"#f5a524", weight:4,
+    fillColor:"#f5a524", fillOpacity:.15, className:"pontoFoco", interactive:false}).addTo(mapa);
+  const mk = rotaSelMarkers[idx];
+  if (mk && mk.openPopup) mk.openPopup();
+  setTimeout(()=>{ if (focoParadaMk && mapa){ mapa.removeLayer(focoParadaMk); focoParadaMk = null; } }, 3500);
 }
 function criarTrajetoNoPonto(idx){
   const p = paradasSelList[idx]; if (!p || p.lat == null) return;

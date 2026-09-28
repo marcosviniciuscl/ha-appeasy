@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.44.0
+
+- **Linha do tempo das paradas**: ao selecionar um ônibus, o painel mostra
+  **todas as paradas** até o fim — as que **já passaram** (apagadas) e as que
+  **faltam**, com a **próxima destacada** ("próximo"). Rola com **barra
+  invisível** para ver tudo.
+- **Clicar numa parada realça ela no mapa** (centraliza e põe um anel pulsante).
+
 ## 0.43.1
 
 - O **destaque prefere o ônibus que dá tempo** (você chega no ponto antes dele).
