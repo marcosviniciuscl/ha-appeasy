@@ -479,6 +479,9 @@
       <div class="row">
         <label class="switch"><input type="checkbox" id="aj-sim"><span class="tr"></span> Modo simulação (não envia nada)</label>
       </div>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="aj-diag"><span class="tr"></span> Log detalhado dos trajetos (diagnóstico)</label>
+      </div>
       <div class="row"><button class="bt" onclick="salvarAjustes()">Salvar ajustes</button></div>
       <div class="aviso" id="aj-msg"></div>
     </div>
@@ -506,7 +509,9 @@
       <div id="lista-rastreios"></div>
     </div>
     <div class="card">
-      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-clock"/></svg>Atividade</h2>
+      <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-clock"/></svg>Atividade
+        <button class="bt sec sm" style="margin-left:auto" onclick="copiarLogs()">Copiar logs</button>
+      </h2>
       <div class="log" id="log"></div>
     </div>
   </section>
@@ -961,13 +966,10 @@ async function carregarMapa(primeiro){
   const norm = s => String(s||"").replace(/^0+/,"") || "0";
   const sel = new Set((est.mapa.onibus||[]).map(norm));
 
-  // trajetos que estão "acontecendo agora": ônibus e ponto de embarque em destaque
+  // trajetos "acontecendo agora": destaca o PRÓXIMO ônibus que passa no ponto
   const ativos = (d.trajetos||[]).filter(t=>t.agora);
   const idsDestaque = new Set();
-  ativos.forEach(t=>{
-    (t.bus_ids||[]).forEach(i=>idsDestaque.add(String(i)));
-    if (t.bus_id) idsDestaque.add(String(t.bus_id));
-  });
+  ativos.forEach(t=>{ if (t.bus_id) idsDestaque.add(String(t.bus_id)); });
   busesDestaque = idsDestaque;
   const linhasAtivas = new Set(ativos.map(t=>norm(t.linha)));
   // o ônibus do trajeto ativo aparece mesmo que a linha não esteja selecionada
@@ -1305,6 +1307,7 @@ function renderAjustes(){
   document.getElementById("aj-rastreio").value = a.atualizacao_rastreio_s;
   document.getElementById("aj-fuso").value = a.fuso;
   document.getElementById("aj-sim").checked = !!a.simulacao;
+  document.getElementById("aj-diag").checked = !!a.diagnostico;
   document.getElementById("aj-caminhada").value = a.velocidade_caminhada_kmh;
   document.getElementById("aj-fator").value = a.fator_rota;
   document.getElementById("aj-margem").value = a.margem_embarque_min;
@@ -1326,7 +1329,8 @@ async function salvarAjustes(){
     fator_rota: +document.getElementById("aj-fator").value,
     margem_embarque_min: +document.getElementById("aj-margem").value,
     janela_saida_min: +document.getElementById("aj-janela").value,
-    simulacao: document.getElementById("aj-sim").checked
+    simulacao: document.getElementById("aj-sim").checked,
+    diagnostico: document.getElementById("aj-diag").checked
   });
   msg("aj-msg", r.ok?"Ajustes salvos.":"erro", r.ok);
 }
@@ -1346,6 +1350,22 @@ function renderLog(d){
   const l = (d && d.log)||[];
   document.getElementById("log").innerHTML = l.length ? l.map(x=>
     `<div><b>${esc(x.hora)}</b> ${esc(x.msg)}</div>`).join("") : '<div class="vazio">Sem eventos.</div>';
+}
+function copiarLogs(){
+  const txt = (document.getElementById("log").innerText || "").trim();
+  if (!txt) return msg("aj-msg", "Sem logs para copiar.", false);
+  const pronto = ()=>msg("aj-msg", "Logs copiados — cole aqui para eu analisar.");
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(pronto).catch(()=>fallbackCopia(txt));
+  } else fallbackCopia(txt);
+}
+function fallbackCopia(txt){
+  const ta = document.createElement("textarea");
+  ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand("copy"); msg("aj-msg", "Logs copiados."); }
+  catch(e){ msg("aj-msg", "Não deu para copiar automaticamente.", false); }
+  document.body.removeChild(ta);
 }
 
 /* ------------------------------------------------ laços */

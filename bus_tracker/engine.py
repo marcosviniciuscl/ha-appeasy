@@ -65,6 +65,7 @@ class Motor:
         self.erro_ciclo = ""
         self.pausado = False
         self._cache_destino = {}  # (lat,lon) -> (ts, [siglas]) linhas que atendem o destino
+        self._trajeto_log = {}    # trajeto_id -> assinatura do último log (evita repetir)
 
     # ------------------------------------------------------------------ log
     def registrar(self, msg, nivel="info"):
@@ -76,6 +77,33 @@ class Motor:
                 "msg": msg,
             })
         getattr(log, nivel if nivel in ("info", "warning", "error") else "info")(msg)
+
+    def _diag(self, t, msg):
+        """Log detalhado de um trajeto (só quando o modo diagnóstico está ligado)."""
+        if self.cfg["ajustes"].get("diagnostico"):
+            self.registrar(f"[diag trajeto {t.get('id')}] {msg}")
+
+    def _log_trajeto(self, t, info):
+        """Registra no atividade o que o trajeto escolheu (só quando muda)."""
+        tid = str(t.get("id"))
+        if not info:
+            sig = "sem-candidatos"
+            if self._trajeto_log.get(tid) != sig:
+                self._trajeto_log[tid] = sig
+                self.registrar(f"Trajeto {tid}: nenhum ônibus indo ao destino foi encontrado",
+                               "warning")
+            return
+        b = (info.get("onibus") or [{}])[0]
+        sig = f"{info['ponto']['nome']}|{b.get('id')}|{b.get('eta_min')}|{info['agora']}"
+        if self._trajeto_log.get(tid) == sig:
+            return
+        self._trajeto_log[tid] = sig
+        dest = (info.get("destino") or {}).get("nome") or "—"
+        janela = "" if info.get("agora") else " (fora do horário)"
+        self.registrar(
+            f"Trajeto {tid} · {info['pessoa']}: destino {dest} → ponto {info['ponto']['nome']} "
+            f"({info['ponto']['dist_m']} m a pé) · próximo ônibus {b.get('id')} "
+            f"(linha {b.get('linha')}, ETA {b.get('eta_min')} min, {b.get('risco')}){janela}")
 
     # ---------------------------------------------------------------- ciclo
     def ciclo(self):
@@ -634,8 +662,12 @@ class Motor:
             return ini_m <= minutos <= fim_m
         return minutos >= ini_m or minutos <= fim_m  # atravessa a meia-noite
 
-    def candidatos(self, sigla, alvo, limiar_m):
-        """Ônibus da linha que ainda vão chegar no ponto da pessoa, com ETA."""
+    def candidatos(self, sigla, alvo, limiar_m, destino=None):
+        """Ônibus da linha que ainda vão chegar no ponto, com ETA.
+
+        Com `destino` (lat,lon), só entram os ônibus cujo itinerário passa no
+        ponto E segue até o destino (ou seja, vão na direção certa).
+        """
         saida = []
         with self.lock:
             lista = [dict(b) for b in self.onibus.values() if norm_sigla(b["linha"]) == norm_sigla(sigla)]
@@ -651,6 +683,12 @@ class Motor:
             s_alvo = self.s_do_alvo(alvo, rota)
             if s_alvo is None or s_alvo <= b["s"] - 60:
                 continue  # ponto já ficou para trás
+            if destino is not None:
+                s_dest, off_dest = rota.projetar(destino)
+                if s_dest is None or off_dest > 2000:
+                    continue  # esta direção não passa no destino
+                if s_dest < s_alvo - 50:
+                    continue  # destino fica atrás do ponto: direção errada
             d = s_alvo - b["s"]
             if d > limiar_m:
                 continue
@@ -704,6 +742,26 @@ class Motor:
                 melhor = (d, p)
         return melhor
 
+    def _montar_ponto(self, ref, destino, nome, parada=None):
+        """Monta o ponto de embarque (coords, caminhada por ruas, alvo)."""
+        destino = (float(destino[0]), float(destino[1]))
+        alvo = {"pos": destino, "parada": parada,
+                "passa_a_m": round(geo.haversine(ref, destino))}
+        info = None
+        try:
+            info = rotas_ruas.caminhada(ref, destino)
+        except Exception:
+            info = None
+        if info:
+            dist, caminho, fonte = info["dist_m"], info["pontos"], info["fonte"]
+        else:
+            fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
+            dist = geo.haversine(ref, destino) * fator
+            caminho, fonte = [list(ref), list(destino)], "reta"
+        return {"nome": nome, "lat": destino[0], "lon": destino[1],
+                "dist_m": round(dist), "tempo_min": round(self._tempo_pe_min(dist), 1),
+                "caminho": caminho, "fonte": fonte, "alvo": alvo}
+
     def _ponto_trajeto(self, pessoa, sigla, ref_pos=None):
         """Ponto de embarque (parada mais próxima) a partir de uma referência.
 
@@ -727,33 +785,67 @@ class Motor:
             if mp:
                 parada = mp[1]
         if parada:
-            destino, nome = (parada["lat"], parada["lon"]), parada["nome"]
-        else:
-            # sem parada oficial: usa o ponto do traçado mais próximo
-            melhor = None
-            for rota in self._rotas_da_linha(sigla):
-                s, off = rota.projetar(ref)
-                if melhor is None or off < melhor[1]:
-                    melhor = (s, off, rota)
-            if not melhor or melhor[1] > 3000:
-                return None
-            destino, nome = melhor[2].ponto_em(melhor[0]), "onde o ônibus passa"
-        alvo = {"pos": destino, "parada": parada,
-                "passa_a_m": round(geo.haversine(ref, destino))}
-        info = None
-        try:
-            info = rotas_ruas.caminhada(ref, destino)
-        except Exception:
-            info = None
-        if info:
-            dist, caminho, fonte = info["dist_m"], info["pontos"], info["fonte"]
-        else:
-            fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
-            dist = geo.haversine(ref, destino) * fator
-            caminho, fonte = [list(ref), list(destino)], "reta"
-        return {"nome": nome, "lat": destino[0], "lon": destino[1],
-                "dist_m": round(dist), "tempo_min": round(self._tempo_pe_min(dist), 1),
-                "caminho": caminho, "fonte": fonte, "alvo": alvo}
+            return self._montar_ponto(ref, (parada["lat"], parada["lon"]), parada["nome"],
+                                      parada=parada)
+        # sem parada oficial: usa o ponto do traçado mais próximo
+        melhor = None
+        for rota in self._rotas_da_linha(sigla):
+            s, off = rota.projetar(ref)
+            if melhor is None or off < melhor[1]:
+                melhor = (s, off, rota)
+        if not melhor or melhor[1] > 3000:
+            return None
+        return self._montar_ponto(ref, melhor[2].ponto_em(melhor[0]), "onde o ônibus passa")
+
+    def _candidatos_com_destino(self, sigla, destino, ref):
+        """(ônibus, parada) para cada ônibus da linha que VAI ao destino.
+
+        Para cada veículo cujo itinerário passa no destino, acha a parada mais
+        próxima da pessoa que esteja **à frente do ônibus** e **antes do
+        destino** — ou seja, no sentido certo. Devolve a lista com ETA já
+        calculado em relação a essa parada.
+        """
+        vel_min = float(self.cfg["ajustes"].get("velocidade_min_kmh", 12))
+        with self.lock:
+            buses = [dict(b) for b in self.onibus.values()
+                     if norm_sigla(b["linha"]) == norm_sigla(sigla)]
+        pares = []
+        for b in buses:
+            cod_it = b.get("cod_it")
+            if not cod_it or b.get("s") is None:
+                continue
+            try:
+                rota = api.rota_do_itinerario(cod_it)
+                paradas = api.paradas_do_itinerario(cod_it)
+            except Exception:
+                continue
+            if not rota or not paradas:
+                continue
+            s_dest, off_dest = rota.projetar(destino)
+            if s_dest is None or off_dest > 2000:
+                continue  # esta direção não passa no destino
+            melhor = None  # (dist_pessoa, parada, s_parada)
+            for p in paradas:
+                s_p, _ = rota.projetar((p["lat"], p["lon"]))
+                if s_p is None or s_p <= b["s"] + 30:
+                    continue  # parada já passou ou o ônibus está sobre ela
+                if s_p > s_dest + 50:
+                    continue  # parada depois do destino: sentido errado
+                d = geo.haversine(ref, (p["lat"], p["lon"]))
+                if melhor is None or d < melhor[0]:
+                    melhor = (d, p, s_p)
+            if not melhor:
+                continue
+            d_pessoa, parada, s_p = melhor
+            dist_bus = s_p - b["s"]
+            vel = max(b.get("vel_kmh") or 0.0, vel_min)
+            b["dist_ponto"] = dist_bus
+            b["eta_min"] = round((dist_bus / 1000) / vel * 60, 1)
+            b["rota"] = rota
+            b["s_alvo"] = s_p
+            pares.append((b, parada, d_pessoa))
+        pares.sort(key=lambda x: x[0]["eta_min"])
+        return pares
 
     def _risco(self, t_pessoa, t_bus, margem):
         if t_bus is None:
@@ -813,11 +905,52 @@ class Motor:
         pos_pessoa = self.posicao(pessoa.get("entidade"))
         ref = pos_pessoa or self.posicao_casa()
         margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
+        destino = self._destino_trajeto(t.get("destino") or {}, linhas)
+        destino_pos = None
+        if destino and destino.get("lat") is not None and destino.get("lon") is not None:
+            destino_pos = (destino["lat"], destino["lon"])
+        if destino_pos:
+            self._diag(t, f"destino {destino.get('nome')} ({destino_pos[0]:.5f},{destino_pos[1]:.5f}); "
+                          f"linhas={', '.join(self.sigla_exib(s) for s in linhas)}")
+        elif t.get("destino"):
+            self._diag(t, f"destino '{t.get('destino')}' sem coordenadas — não dá para checar a direção")
 
         # junta os ônibus de todas as linhas que ainda chegam no ponto da pessoa
         coletados = []
         origem = ref
+        pontos_cache = {}
         for sigla in linhas:
+            if destino_pos:
+                # só ônibus que passam no ponto E seguem até o destino
+                pares = []
+                try:
+                    pares = self._candidatos_com_destino(sigla, destino_pos, ref)
+                except Exception as e:
+                    log.debug(f"trajeto {t.get('id')} linha {sigla} (destino): {e}")
+                self._diag(t, f"linha {self.sigla_exib(sigla)}: {len(pares)} ônibus indo ao destino")
+                for b, parada, _ in pares:
+                    chave = (round(parada["lat"], 5), round(parada["lon"], 5))
+                    ponto = pontos_cache.get(chave)
+                    if ponto is None:
+                        ponto = self._montar_ponto(ref, (parada["lat"], parada["lon"]),
+                                                   parada["nome"], parada=parada)
+                        pontos_cache[chave] = ponto
+                    if not origem:
+                        origem = ponto["alvo"]["pos"]
+                    eta = b.get("eta_min")
+                    risco = self._risco(ponto["tempo_min"], eta, margem)
+                    coletados.append({
+                        "linha": self.sigla_exib(sigla),
+                        "ponto": ponto,
+                        "bus": {
+                            "id": b["id"], "linha": self.sigla_exib(sigla),
+                            "eta_min": eta, "dist_m": round(b.get("dist_ponto") or 0),
+                            "risco": risco,
+                            "tempo_total_min": eta if (eta is not None and risco != "perdeu") else None,
+                        },
+                    })
+                continue
+            # sem destino: ponto mais próximo sobre o traçado (comportamento antigo)
             try:
                 ponto = self._ponto_trajeto(pessoa, sigla, ref_pos=ref)
             except Exception as e:
@@ -827,7 +960,10 @@ class Motor:
                 continue
             if not origem:
                 origem = ponto["alvo"]["pos"]
-            for b in self.candidatos(sigla, ponto["alvo"], 10 ** 7):
+            candidatos = self.candidatos(sigla, ponto["alvo"], 10 ** 7)
+            self._diag(t, f"linha {self.sigla_exib(sigla)}: ponto '{ponto['nome']}' "
+                          f"({ponto['dist_m']} m a pé) · {len(candidatos)} ônibus")
+            for b in candidatos:
                 eta = b.get("eta_min")
                 risco = self._risco(ponto["tempo_min"], eta, margem)
                 coletados.append({
@@ -841,6 +977,7 @@ class Motor:
                     },
                 })
         if not coletados:
+            self._log_trajeto(t, None)
             return None
         # com várias linhas, descarta as que exigem caminhada absurda até o ponto
         if len(linhas) > 1:
@@ -874,18 +1011,20 @@ class Motor:
                     bus_id = onibus[0]["id"]
         except Exception:
             pass
-        return {
+        info = {
             "id": t.get("id"), "pessoa": pessoa["nome"], "pessoa_id": pessoa["id"],
             "linhas": [self.sigla_exib(s) for s in linhas],
             "linha": melhor["linha"],
             "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
             "pos": {"lat": origem[0], "lon": origem[1]},
-            "destino": self._destino_trajeto(t.get("destino") or {}, linhas),
+            "destino": destino,
             "agora": agora_bool, "bus_id": bus_id, "bus_ids": bus_ids,
             "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
             "caminho": ponto["caminho"], "fonte": ponto["fonte"],
             "onibus": onibus,
         }
+        self._log_trajeto(t, info)
+        return info
 
     def avaliar_avisos(self):
         """Decide se algun ônibus está chegando e dispara o aviso."""

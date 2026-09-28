@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.37.0
+
+- **Ponto de embarque no sentido do destino**: agora só entram paradas de
+  itinerários que **passam no destino** e que ficam **antes** dele. Antes o app
+  podia mandar você para uma parada onde passam ônibus que **não** vão ao seu
+  destino (direção contrária).
+- **Destaque é o próximo ônibus**: o veículo e a rota em destaque são o **próximo
+  ônibus que vai passar na sua parada** indo para o destino.
+- **Logs de diagnóstico**: novo botão **Copiar logs** em Ajustes → Atividade e um
+  switch **Log detalhado dos trajetos** mostrando destino, direções, parada
+  escolhida, ônibus e motivo quando nada é encontrado.
+
 ## 0.36.0
 
 - **Configuração só no painel**: removidas todas as opções do App no Home

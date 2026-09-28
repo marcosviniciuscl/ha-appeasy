@@ -37,7 +37,9 @@ um ponto que existe de verdade.
 
 Com isso o App calcula e mostra:
 
-- o **ponto de embarque** (parada mais próxima da linha) e a **distância** até ele;
+- o **ponto de embarque** (a parada mais próxima **que fica no sentido do seu
+  destino** — só entram itinerários que passam no destino e paradas antes dele)
+  e a **distância** até ele;
 - o **tempo a pé** calculado por **ruas** (OSRM) e a **linha da caminhada** no
   mapa, sempre até a **parada mais próxima** da linha. Em **Ajustes → Casa** dá
   para cadastrar uma zona (por `zone.home` ou marcando no mapa), usada como
