@@ -276,6 +276,25 @@ def paradas_do_itinerario(cod_it, ttl=6 * 3600):
     return saida
 
 
+def paradas_com_coordenadas(cod_linha, ttl=6 * 3600):
+    """Todas as paradas de uma linha, COM coordenadas (cacheado)."""
+    agora = time.time()
+    cache = _paradas_linha_cache.get(cod_linha)
+    if cache and (agora - cache[0]) < ttl:
+        return cache[1]
+    d = _jsonp(_get(f"/V3/buscarParadasPorLinhaComCoordenadas/{cod_linha}/0/{_praca()}/retornoJSONH"),
+               "retornoJSONH")
+    saida = []
+    for p in d.get("paradas", []):
+        try:
+            saida.append({"cod": p.get("cod"), "nome": (p.get("desc") or "").strip(),
+                          "lat": float(p["y"]), "lon": float(p["x"]), "cor": p.get("cor")})
+        except (KeyError, TypeError, ValueError):
+            continue
+    _paradas_linha_cache[cod_linha] = (agora, saida)
+    return saida
+
+
 def previsoes_da_parada(cod_parada, acessiveis=False):
     """Previsões de uma parada (lista de {'prev','sgLin','cor','tpAcess',...})."""
     flag = "true" if acessiveis else "false"
@@ -285,6 +304,7 @@ def previsoes_da_parada(cod_parada, acessiveis=False):
 
 
 _paradas_iti_cache = {}
+_paradas_linha_cache = {}
 
 
 def rota_do_itinerario(cod_it, ttl=6 * 3600):

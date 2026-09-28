@@ -25,8 +25,10 @@ def _padroes():
             "fator_rota": 1.3,                # ruas ≈ 30% mais que a linha reta
             "margem_embarque_min": 2,         # chegar com essa folga no ponto
             "janela_saida_min": 30,           # avalia trajetos nessa janela antes do horário
+            "osrm_base": "https://router.project-osrm.org",  # roteamento por ruas
         },
         "cidade": {},
+        "casa": {"entidade": "zone.home", "lat": None, "lon": None, "raio": 150},
         "pessoas": [],
         "regras": [],
         "trajetos": [],

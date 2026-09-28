@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import geo
 import ha
+import rotas as rotas_ruas
 import siumobile as api
 from siumobile import norm_sigla
 
@@ -205,6 +206,9 @@ class Motor:
             siglas.add(norm_sigla(sigla))
         for sigla in self.linhas_extras:
             siglas.add(norm_sigla(sigla))
+        for t in self.cfg.get("trajetos", []):
+            if t.get("ativo", True) and t.get("linha"):
+                siglas.add(norm_sigla(t.get("linha")))
         siglas.discard("")
         return sorted(siglas)
 
@@ -575,28 +579,82 @@ class Motor:
         vel = float(self.cfg["ajustes"].get("velocidade_caminhada_kmh", 4.5)) or 4.5
         return (dist_m / 1000.0) / vel * 60.0
 
-    def _ponto_trajeto(self, pessoa, sigla):
-        """Ponto onde a pessoa pega a linha + distância/tempo a pé até lá."""
-        alvo = self.alvo(pessoa, sigla)
-        if not alvo or not alvo.get("pos"):
+    def posicao_casa(self):
+        """Posição da casa: entidade do HA (ex.: zone.home) ou lat/lon salvos."""
+        casa = self.cfg.get("casa") or {}
+        ent = (casa.get("entidade") or "").strip()
+        if ent:
+            st = ha.estado(ent)
+            if st:
+                a = st.get("attributes", {})
+                if a.get("latitude") is not None and a.get("longitude") is not None:
+                    try:
+                        return (float(a["latitude"]), float(a["longitude"]))
+                    except (TypeError, ValueError):
+                        pass
+        lat, lon = casa.get("lat"), casa.get("lon")
+        if lat is not None and lon is not None:
+            return (float(lat), float(lon))
+        return None
+
+    def _parada_mais_proxima(self, ref, linha):
+        """(dist_m, parada) da parada oficial da linha mais próxima de `ref`."""
+        cod = (linha or {}).get("cod")
+        if cod is None:
             return None
-        parada = alvo.get("parada")
+        try:
+            paradas = api.paradas_com_coordenadas(cod)
+        except Exception as e:
+            log.debug(f"paradas com coordenadas {cod}: {e}")
+            return None
+        melhor = None
+        for p in paradas:
+            d = geo.haversine(ref, (p["lat"], p["lon"]))
+            if melhor is None or d < melhor[0]:
+                melhor = (d, p)
+        return melhor
+
+    def _ponto_trajeto(self, pessoa, sigla, ref_pos=None):
+        """Ponto de embarque (parada mais próxima) a partir de uma referência.
+
+        Devolve ponto, distância/tempo a pé (por ruas) e o traçado da caminhada.
+        """
+        ref = ref_pos or self.posicao(pessoa.get("entidade"))
+        if not ref:
+            return None
+        linha = api.linha_por_sigla(sigla)
+        parada = None
+        mp = self._parada_mais_proxima(ref, linha)
+        if mp:
+            parada = mp[1]
         if parada:
             destino, nome = (parada["lat"], parada["lon"]), parada["nome"]
         else:
+            # sem parada oficial: usa o ponto do traçado mais próximo
             melhor = None
             for rota in self._rotas_da_linha(sigla):
-                s, off = rota.projetar(alvo["pos"])
+                s, off = rota.projetar(ref)
                 if melhor is None or off < melhor[1]:
                     melhor = (s, off, rota)
             if not melhor or melhor[1] > 3000:
                 return None
             destino, nome = melhor[2].ponto_em(melhor[0]), "onde o ônibus passa"
-        fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
-        dist = geo.haversine(alvo["pos"], destino) * fator
+        alvo = {"pos": destino, "parada": parada,
+                "passa_a_m": round(geo.haversine(ref, destino))}
+        info = None
+        try:
+            info = rotas_ruas.caminhada(ref, destino)
+        except Exception:
+            info = None
+        if info:
+            dist, caminho, fonte = info["dist_m"], info["pontos"], info["fonte"]
+        else:
+            fator = float(self.cfg["ajustes"].get("fator_rota", 1.3))
+            dist = geo.haversine(ref, destino) * fator
+            caminho, fonte = [list(ref), list(destino)], "reta"
         return {"nome": nome, "lat": destino[0], "lon": destino[1],
                 "dist_m": round(dist), "tempo_min": round(self._tempo_pe_min(dist), 1),
-                "alvo": alvo}
+                "caminho": caminho, "fonte": fonte, "alvo": alvo}
 
     def _risco(self, t_pessoa, t_bus, margem):
         if t_bus is None:
@@ -608,13 +666,22 @@ class Motor:
         return "ok"
 
     def calcular_trajeto(self, t):
-        """Calcula ponto, caminhada, ônibus e risco de perder para um trajeto."""
+        """Calcula ponto, caminhada, ônibus e risco de perder para um trajeto.
+
+        `ida`: sai de casa -> ponto perto da casa (zona `casa`).
+        `volta`: pega perto de onde a pessoa está e desce perto da casa.
+        """
         pessoa = next((p for p in self.cfg.get("pessoas", []) if p["id"] == t.get("pessoa")), None)
         if not pessoa or not pessoa.get("ativo", True):
             return None
-        ponto = self._ponto_trajeto(pessoa, t.get("linha"))
+        sentido = t.get("sentido") or "ida"
+        casa = self.posicao_casa()
+        pos_pessoa = self.posicao(pessoa.get("entidade"))
+        ref = casa if (sentido == "ida" and casa) else None
+        ponto = self._ponto_trajeto(pessoa, t.get("linha"), ref_pos=ref)
         if not ponto:
             return None
+        origem = casa if (sentido == "ida" and casa) else (pos_pessoa or ponto["alvo"]["pos"])
         margem = float(self.cfg["ajustes"].get("margem_embarque_min", 2))
         onibus = []
         for b in self.candidatos(t.get("linha"), ponto["alvo"], 10 ** 7)[:3]:
@@ -625,12 +692,22 @@ class Motor:
                 "risco": risco,
                 "tempo_total_min": eta if (eta is not None and risco != "perdeu") else None,
             })
+        # volta: também calcula onde descer (ponto perto da casa) e a caminhada
+        destino_casa = None
+        if sentido == "volta" and casa:
+            dp = self._ponto_trajeto(pessoa, t.get("linha"), ref_pos=casa)
+            if dp:
+                destino_casa = {"nome": dp["nome"], "lat": dp["lat"], "lon": dp["lon"],
+                                "dist_m": dp["dist_m"], "tempo_min": dp["tempo_min"],
+                                "caminho": dp["caminho"]}
         return {
             "id": t.get("id"), "pessoa": pessoa["nome"], "pessoa_id": pessoa["id"],
-            "linha": self.sigla_exib(t.get("linha")), "sentido": t.get("sentido") or "ida",
+            "linha": self.sigla_exib(t.get("linha")), "sentido": sentido,
             "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
-            "pos": {"lat": ponto["alvo"]["pos"][0], "lon": ponto["alvo"]["pos"][1]},
+            "pos": {"lat": origem[0], "lon": origem[1]},
+            "casa": destino_casa,
             "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
+            "caminho": ponto["caminho"], "fonte": ponto["fonte"],
             "onibus": onibus,
         }
 
@@ -1118,6 +1195,8 @@ class Motor:
             "lugares": list(lugares.values()),
             "pontos": pontos,
             "trajetos": trajetos,
+            "casa": (lambda p, c: {"lat": p[0], "lon": p[1], "raio": c.get("raio", 150)}
+                     if p else None)(self.posicao_casa(), self.cfg.get("casa") or {}),
             "rotas": self.rotas_render() if (com_rotas and mapa.get("rotas")) else {},
             "rastreios": rastreios,
             "log": list(self.log)[:60],

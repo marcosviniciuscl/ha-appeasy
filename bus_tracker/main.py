@@ -26,6 +26,7 @@ log = logging.getLogger("bus_tracker")
 import store
 from engine import Motor
 import ha
+import rotas
 import siumobile as api
 import webapp
 
@@ -91,6 +92,7 @@ def main():
 
     if opcoes.get("intervalo_segundos"):
         cfg["ajustes"]["intervalo_segundos"] = int(opcoes["intervalo_segundos"])
+    rotas.configurar(cfg["ajustes"].get("osrm_base"))
     linhas_brutas = opcoes.get("linhas_monitoradas") or []
     if not isinstance(linhas_brutas, (list, tuple, set)):
         linhas_brutas = re.split(r"[,;\s]+", str(linhas_brutas))

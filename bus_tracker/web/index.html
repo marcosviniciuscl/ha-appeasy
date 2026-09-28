@@ -11,7 +11,7 @@
     --bg:#0e1014; --card:#171a21; --card2:#1e222b; --linha:rgba(255,255,255,.09);
     --txt:#e9ecf2; --txt2:#98a2b3; --acento:#f5a524; --azul:#3d7dff; --ok:#37b169; --erro:#e5484d;
     --panel:rgba(20,23,29,.82); --hdr-bg:rgba(14,16,20,.78); --nav-bg:rgba(14,16,20,.94);
-    --hdr:54px; --nav:62px; --r:16px;
+    --hdr:50px; --nav:56px; --r:14px;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#eef1f5; --card:#fff; --card2:#f3f4f7; --linha:rgba(0,0,0,.08);
@@ -46,6 +46,8 @@
   #s-mapa{display:none}
   #s-mapa.on{position:fixed;inset:0;z-index:1;display:block}
   #mapa{position:absolute;inset:0;background:#20242c}
+  #mapa,.leaflet-container{touch-action:none;-webkit-user-select:none;user-select:none;
+                           -webkit-tap-highlight-color:transparent}
   .leaflet-container{background:#20242c;font:inherit}
   .leaflet-control-attribution{font-size:9.5px}
   .leaflet-bottom{bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px)}
@@ -56,8 +58,9 @@
                 display:flex;gap:8px}
 
   /* ---------- botões flutuantes / pills ---------- */
-  .fab{width:46px;height:46px;flex:0 0 auto;border-radius:14px;display:grid;place-items:center;cursor:pointer;
-       color:var(--txt);box-shadow:0 6px 18px rgba(0,0,0,.32);transition:transform .12s ease,background .15s}
+  .fab{width:40px;height:40px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;cursor:pointer;
+       color:var(--txt);box-shadow:0 4px 14px rgba(0,0,0,.3);transition:transform .12s ease,background .15s}
+  .fab .ic{width:19px;height:19px}
   .fab:active{transform:scale(.94)}
   .fab.acento{background:var(--acento);color:#20160a;border-color:transparent}
   .pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;border-radius:999px;
@@ -90,8 +93,8 @@
       padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);
       backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
       border-top:1px solid var(--linha)}
-  nav .tab-btn{flex:1;flex-direction:column;gap:3px;font:600 10.5px/1 inherit;padding:9px 2px 7px}
-  nav .tab-btn .ic{width:22px;height:22px}
+  nav .tab-btn{flex:1;flex-direction:column;gap:2px;font:600 9.5px/1 inherit;padding:7px 2px 6px}
+  nav .tab-btn .ic{width:20px;height:20px}
   nav .tab-btn.on{color:var(--acento)}
 
   /* ---------- conteúdo ---------- */
@@ -100,12 +103,12 @@
   main section{display:none}
   main section.on{display:block}
 
-  .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:15px;margin-bottom:12px}
+  .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:12px;margin-bottom:10px}
   .card h2{font-size:14px;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
   .card h2 .tag{margin-left:auto;font-size:12px;color:var(--txt2);font-weight:500}
   label.f{display:block;font-size:12.5px;color:var(--txt2);margin:10px 0 4px}
   input,select,textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--linha);
-        border-radius:11px;padding:11px 12px;font-size:16px;font-family:inherit}
+        border-radius:10px;padding:9px 10px;font-size:16px;font-family:inherit}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -113,7 +116,7 @@
         border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer;user-select:none}
   .chip.on{background:rgba(245,165,36,.16);border-color:var(--acento);color:var(--txt)}
   .chip input{display:none}
-  button.bt{border:none;border-radius:11px;padding:11px 15px;font-size:14px;font-weight:600;cursor:pointer;
+  button.bt{border:none;border-radius:10px;padding:9px 13px;font-size:13.5px;font-weight:600;cursor:pointer;
             background:var(--acento);color:#20160a}
   button.bt.sec{background:var(--card2);color:var(--txt);border:1px solid var(--linha)}
   button.bt.del{background:transparent;color:var(--erro);border:1px solid var(--linha);padding:7px 11px;font-size:12.5px}
@@ -143,6 +146,16 @@
   .busmark .l{position:absolute;top:17px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
               font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
               border:1px solid rgba(255,255,255,.28)}
+
+  /* marcador de pessoa */
+  .personmark{position:relative;width:0;height:0}
+  .personmark .p{position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;
+                 background:#3d7dff;color:#fff;display:grid;place-items:center;border:2px solid #fff;
+                 box-shadow:0 3px 10px rgba(0,0,0,.5)}
+  .personmark svg{width:18px;height:18px;fill:currentColor}
+  .personmark .l{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
+                 font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
+                 border:1px solid rgba(255,255,255,.28)}
 
   /* ---------- desktop ---------- */
   @media (min-width: 900px){
@@ -186,7 +199,14 @@
   <symbol id="ic-close" viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></symbol>
   <symbol id="ic-walk" viewBox="0 0 24 24"><path d="M14.12,10H19V8.2H15.38L13.38,4.87C13.08,4.37 12.54,4.03 11.92,4.03C11.74,4.03 11.58,4.06 11.42,4.11L6,5.8V11H7.8V7.33L9.91,6.67L6,22H7.8L10.67,13.89L13,17V22H14.8V15.59L12.31,11.05L13.04,8.18M12,4.5A2,2 0 0,0 14,2.5A2,2 0 0,0 12,0.5A2,2 0 0,0 10,2.5A2,2 0 0,0 12,4.5Z"/></symbol>
   <symbol id="ic-clock" viewBox="0 0 24 24"><path d="M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></symbol>
+  <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M19,13H5V11H19V13Z"/></symbol>
+  <symbol id="ic-home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></symbol>
 </svg>
+<datalist id="dl-linhas"></datalist>
+<datalist id="dl-pessoas"></datalist>
+<datalist id="dl-notify"></datalist>
+<datalist id="dl-entidades"></datalist>
 
 <header>
   <div class="brand">
@@ -223,6 +243,8 @@
     <button class="fab glass" onclick="mostrarTudo()" title="Mostrar tudo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-eye"/></svg></button>
     <button class="fab glass" onclick="toggleTrajetos()" title="Trajetos e caminhada"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-walk"/></svg></button>
     <button class="fab glass" onclick="togglePontos()" title="Pontos de embarque"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-marker"/></svg></button>
+    <button class="fab glass" onclick="zoomIn()" title="Aproximar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-plus"/></svg></button>
+    <button class="fab glass" onclick="zoomOut()" title="Afastar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-minus"/></svg></button>
   </div>
   <aside class="detail glass" id="rota-info" style="display:none"></aside>
   <aside class="detail glass" id="trajetos-sheet" style="display:none">
@@ -278,7 +300,7 @@
       <h2 id="tr-titulo">Novo trajeto</h2>
       <p class="meta" style="margin:0 0 6px">Cadastre o ônibus que a pessoa pega e os horários. O app calcula o tempo a pé até o ponto e avisa quando sair.</p>
       <div class="grid2">
-        <div><label class="f">Pessoa</label><select id="tr-pessoa"></select></div>
+        <div><label class="f">Pessoa</label><input id="tr-pessoa" list="dl-pessoas" placeholder="digite o nome…"></div>
         <div><label class="f">Sentido</label>
           <select id="tr-sentido">
             <option value="ida">Ida (saindo de casa)</option>
@@ -286,8 +308,8 @@
           </select>
         </div>
       </div>
-      <label class="f">Linha (ônibus)</label>
-      <select id="tr-linha"></select>
+      <label class="f">Linha (digite para buscar)</label>
+      <input id="tr-linha" list="dl-linhas" placeholder="ex.: 085">
       <label class="f">Horários do ônibus (separe por vírgula)</label>
       <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
       <label class="f">Dias da semana</label>
@@ -312,8 +334,8 @@
   <section id="s-avisos">
     <div class="card">
       <h2 id="av-titulo">Novo aviso</h2>
-      <label class="f">Linha</label>
-      <select id="av-linha"></select>
+      <label class="f">Linha (digite para buscar)</label>
+      <input id="av-linha" list="dl-linhas" placeholder="ex.: 085">
       <label class="f">Avisar quem</label>
       <div class="chips" id="av-pessoas"></div>
       <label class="f">Dias da semana</label>
@@ -344,10 +366,10 @@
       <h2 id="pe-titulo">Nova pessoa</h2>
       <div class="grid2">
         <div><label class="f">Nome</label><input id="pe-nome" placeholder="Ex.: Ana"></div>
-        <div><label class="f">Celular que recebe</label><select id="pe-notify"></select></div>
+        <div><label class="f">Celular que recebe</label><input id="pe-notify" list="dl-notify" placeholder="digite para buscar…"></div>
       </div>
       <label class="f">Localização (pessoa/rastreador do HA)</label>
-      <select id="pe-entidade"></select>
+      <input id="pe-entidade" list="dl-entidades" placeholder="digite para buscar…">
       <div class="row">
         <button class="bt" onclick="salvarPessoa()">Salvar pessoa</button>
         <button class="bt sec" onclick="novaPessoa()">Limpar</button>
@@ -383,6 +405,25 @@
       <div class="aviso" id="aj-msg"></div>
     </div>
     <div class="card">
+      <h2>Casa / zona de referência</h2>
+      <p class="meta" style="margin:0 0 6px">Usada para saber o que é <b>ida</b> (saindo de casa) e <b>volta</b> (para casa) nos trajetos.</p>
+      <label class="f">Entidade do HA (ex.: <code>zone.home</code>)</label>
+      <input id="casa-entidade" placeholder="zone.home">
+      <div class="grid2">
+        <div><label class="f">Latitude</label><input id="casa-lat" type="number" step="0.000001" placeholder="-12.25"></div>
+        <div><label class="f">Longitude</label><input id="casa-lon" type="number" step="0.000001" placeholder="-38.96"></div>
+      </div>
+      <div class="grid2">
+        <div><label class="f">Raio (m)</label><input id="casa-raio" type="number" step="10"></div>
+        <div><label class="f">Servidor de rotas (OSRM)</label><input id="osrm-base" placeholder="https://router.project-osrm.org"></div>
+      </div>
+      <div class="row">
+        <button class="bt" onclick="salvarCasa()">Salvar casa</button>
+        <button class="bt sec" onclick="marcarCasa()">Marcar no mapa</button>
+      </div>
+      <div class="aviso" id="casa-msg"></div>
+    </div>
+    <div class="card">
       <h2>Rastreios ativos<span class="tag" id="tag-rastreios"></span></h2>
       <div id="lista-rastreios"></div>
     </div>
@@ -409,9 +450,9 @@
 const BASE = location.pathname.replace(/\/$/, "") + "/";
 const DIAS = ["seg","ter","qua","qui","sex","sáb","dom"];
 let est = {ajustes:{},pessoas:[],regras:[],mapa:{},linhas:[],ha:{}};
-let mapa, camadaOnibus, camadaOutros, rotaSelLayer;
+let mapa, camadaOnibus, camadaOutros, rotaSelLayer, casaLayer;
 let mkOnibus = {};
-let onibusSel = null, rotaAjustada = false;
+let onibusSel = null, rotaAjustada = false, marcandoCasa = false;
 let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
 
@@ -449,7 +490,7 @@ async function carregarEstado(){
   document.getElementById("hdr-sub").textContent =
     nomeCidade + ((est.linhas_observadas||[]).join(" · ") || "nenhuma linha configurada");
   renderMapaChips(); renderPessoas(); renderRegras(); renderAjustes(); preencherSelects();
-  renderCidade(); renderTrajetos();
+  renderCidade(); renderTrajetos(); renderCasa();
   const st = est.status||{};
   document.getElementById("dot").className = "dot" + (st.escutador?"":" off");
   document.getElementById("hdr-ha").textContent = st.escutador ? "ao vivo" : "sem eventos";
@@ -460,40 +501,23 @@ async function carregarEstado(){
 }
 
 function preencherSelects(){
-  const sel = document.getElementById("av-linha");
-  const atual = sel.value;
-  sel.innerHTML = '<option value="">— escolha a linha —</option>' + (est.linhas||[]).map(l=>
+  // listas pesquisáveis (datalist). O valor é o que o app usa no submit.
+  document.getElementById("dl-linhas").innerHTML = (est.linhas||[]).map(l=>
     `<option value="${esc(l.sigla)}">${esc(l.sigla)} · ${esc(l.nome)}</option>`).join("");
-  sel.value = atual;
-
+  document.getElementById("dl-pessoas").innerHTML = (est.pessoas||[]).map(p=>
+    `<option value="${esc(p.nome)}"></option>`).join("");
   const nots = (est.ha&&est.ha.notificacoes)||[];
-  const peN = document.getElementById("pe-notify");
-  const atualN = peN.value;
-  peN.innerHTML = '<option value="">— escolha o celular —</option>' + nots.map(n=>
+  document.getElementById("dl-notify").innerHTML = nots.map(n=>
     `<option value="notify.${esc(n.servico)}">${esc(n.nome)}</option>`).join("");
-  peN.value = atualN;
-
   const pes = (est.ha&&est.ha.pessoas)||[], ras = (est.ha&&est.ha.rastreadores)||[];
-  const opc = [
+  document.getElementById("dl-entidades").innerHTML = [
     ...pes.map(p=>`<option value="${esc(p.entity_id)}">${esc(p.nome)} (pessoa)</option>`),
     ...ras.filter(r=>r.tem_gps).map(r=>`<option value="${esc(r.entity_id)}">${esc(r.nome)} (rastreador)</option>`)
-  ];
-  const peE = document.getElementById("pe-entidade");
-  const atualE = peE.value;
-  peE.innerHTML = '<option value="">— sem localização —</option>' + opc.join("");
-  peE.value = atualE;
-
-  const trP = document.getElementById("tr-pessoa");
-  const atualP = trP.value;
-  trP.innerHTML = '<option value="">— escolha a pessoa —</option>' + (est.pessoas||[]).map(p=>
-    `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join("");
-  trP.value = atualP;
-
-  const trL = document.getElementById("tr-linha");
-  const atualL = trL.value;
-  trL.innerHTML = '<option value="">— escolha a linha —</option>' + (est.linhas||[]).map(l=>
-    `<option value="${esc(l.sigla)}">${esc(l.sigla)} · ${esc(l.nome)}</option>`).join("");
-  trL.value = atualL;
+  ].join("");
+}
+function pessoaPorNome(nome){
+  nome = String(nome||"").trim();
+  return (est.pessoas||[]).find(p=>p.nome===nome) || (est.pessoas||[]).find(p=>p.id===nome);
 }
 
 /* ------------------------------------------------ cidade */
@@ -523,6 +547,36 @@ async function salvarCidade(){
     msg("cid-msg", "Cidade aplicada: " + ((r.cidade && r.cidade.nome) || ""));
     await carregarEstado(); carregarMapa(); carregarOnibus();
   } else msg("cid-msg", r.erro||"erro ao aplicar a cidade", false);
+}
+
+/* ------------------------------------------------ casa / rotas */
+function renderCasa(){
+  const c = est.casa || {};
+  document.getElementById("casa-entidade").value = c.entidade || "";
+  document.getElementById("casa-lat").value = c.lat != null ? c.lat : "";
+  document.getElementById("casa-lon").value = c.lon != null ? c.lon : "";
+  document.getElementById("casa-raio").value = c.raio != null ? c.raio : 150;
+  document.getElementById("osrm-base").value = (est.ajustes && est.ajustes.osrm_base) || "";
+}
+async function salvarCasa(){
+  const corpo = {
+    entidade: document.getElementById("casa-entidade").value.trim(),
+    raio: +document.getElementById("casa-raio").value || 150,
+    osrm_base: document.getElementById("osrm-base").value.trim()
+  };
+  const lat = document.getElementById("casa-lat").value.trim();
+  const lon = document.getElementById("casa-lon").value.trim();
+  if (lat && lon){ corpo.lat = +lat; corpo.lon = +lon; }
+  else if (!corpo.entidade){ return msg("casa-msg","Informe uma entidade ou marque a casa no mapa.", false); }
+  else { corpo.lat = null; corpo.lon = null; }
+  const r = await api("/api/casa", corpo);
+  if (r.ok){ msg("casa-msg","Casa salva."); await carregarEstado(); carregarMapa(); }
+  else msg("casa-msg", r.erro||"erro ao salvar", false);
+}
+function marcarCasa(){
+  marcandoCasa = true;
+  trocarAba("mapa");
+  msg("casa-msg","Toque no mapa para marcar a casa.");
 }
 
 /* ------------------------------------------------ trajetos (cadastro) */
@@ -566,7 +620,7 @@ function editarTrajeto(id){
   const t = (est.trajetos||[]).find(x=>x.id===id); if(!t) return;
   editandoTrajeto = id;
   document.getElementById("tr-titulo").textContent = "Editando trajeto · linha "+t.linha;
-  document.getElementById("tr-pessoa").value = t.pessoa||"";
+  document.getElementById("tr-pessoa").value = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa || "";
   document.getElementById("tr-linha").value = t.linha||"";
   document.getElementById("tr-sentido").value = t.sentido||"ida";
   document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
@@ -577,11 +631,13 @@ function editarTrajeto(id){
 async function salvarTrajeto(){
   const dias = [...document.querySelectorAll("#tr-dias .chip.on")].map(c=>parseInt(c.dataset.d,10));
   const horarios = document.getElementById("tr-horarios").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const pessoa = pessoaPorNome(document.getElementById("tr-pessoa").value);
+  if (!pessoa) return msg("tr-msg","Escolha a pessoa (digite o nome).", false);
   const trajeto = {
     id: editandoTrajeto,
     ativo: document.getElementById("tr-ativo").checked,
-    pessoa: document.getElementById("tr-pessoa").value,
-    linha: document.getElementById("tr-linha").value,
+    pessoa: pessoa.id,
+    linha: document.getElementById("tr-linha").value.trim(),
     sentido: document.getElementById("tr-sentido").value,
     dias, horarios
   };
@@ -595,7 +651,8 @@ async function apagarTrajeto(id){
 }
 async function testarTrajeto(){
   if (!editandoTrajeto) return msg("tr-msg","Salve o trajeto antes de testar.", false);
-  const r = await api("/api/trajeto_teste", {id: editandoTrajeto, pessoa: document.getElementById("tr-pessoa").value});
+  const pessoa = pessoaPorNome(document.getElementById("tr-pessoa").value);
+  const r = await api("/api/trajeto_teste", {id: editandoTrajeto, pessoa: pessoa ? pessoa.id : ""});
   msg("tr-msg", r.ok ? "Aviso enviado — confira o celular." : (r.erro||"não deu para testar"), r.ok);
 }
 function toggleTrajetos(){
@@ -605,6 +662,8 @@ function toggleTrajetos(){
 
 /* ------------------------------------------------ mapa */
 const BUS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,11H6V6H18M16.5,17A1.5,1.5 0 0,1 15,15.5A1.5,1.5 0 0,1 16.5,14A1.5,1.5 0 0,1 18,15.5A1.5,1.5 0 0,1 16.5,17M7.5,17A1.5,1.5 0 0,1 6,15.5A1.5,1.5 0 0,1 7.5,14A1.5,1.5 0 0,1 9,15.5A1.5,1.5 0 0,1 7.5,17M4,16C4,16.88 4.39,17.67 5,18.22V20A1,1 0 0,0 6,21H7A1,1 0 0,0 8,20V19H16V20A1,1 0 0,0 17,21H18A1,1 0 0,0 19,20V18.22C19.61,17.67 20,16.88 20,16V6C20,2.5 16.42,2 12,2C7.58,2 4,2.5 4,6V16Z"/></svg>';
+const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>';
+const HOME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
 function busIcon(b, sel){
   const cls = (b.em_movimento ? "" : " parado") + (sel ? " sel" : "");
   const vel = b.vel_kmh ? ` · ${Math.round(b.vel_kmh)}` : "";
@@ -618,17 +677,33 @@ function popupBus(b){
 function centroMapa(){
   return (est.cidade && est.cidade.centro) || [-12.2664,-38.9663];
 }
+function zoomIn(){ if (mapa) mapa.zoomIn(1); }
+function zoomOut(){ if (mapa) mapa.zoomOut(1); }
+function aoClicarMapa(e){
+  if (marcandoCasa){
+    document.getElementById("casa-lat").value = e.latlng.lat.toFixed(6);
+    document.getElementById("casa-lon").value = e.latlng.lng.toFixed(6);
+    marcandoCasa = false;
+    msg("casa-msg", "Posição marcada. Clique em Salvar casa.");
+    return;
+  }
+  limparSelecao();
+}
 function iniciarMapa(){
   if (mapa) return;
-  mapa = L.map("mapa", {zoomControl:false, attributionControl:true}).setView(centroMapa(), 13);
-  L.control.zoom({position:"bottomright"}).addTo(mapa);
+  mapa = L.map("mapa", {
+    zoomControl:false, attributionControl:true,
+    touchZoom:true, scrollWheelZoom:true, doubleClickZoom:true, boxZoom:true, keyboard:true,
+    zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:80
+  }).setView(centroMapa(), 13);
   L.tileLayer(BASE + "api/tile/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:"© OpenStreetMap"
   }).addTo(mapa);
   camadaOnibus = L.layerGroup().addTo(mapa);
   camadaOutros = L.layerGroup().addTo(mapa);
   rotaSelLayer = L.layerGroup().addTo(mapa);
-  mapa.on("click", limparSelecao);
+  casaLayer = L.layerGroup().addTo(mapa);
+  mapa.on("click", aoClicarMapa);
 }
 
 async function carregarMapa(primeiro){
@@ -661,25 +736,42 @@ async function carregarMapa(primeiro){
 
   camadaOutros.clearLayers();
   (d.lugares||[]).forEach(p=>{
-    camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:"#3d7dff", weight:3, fillColor:"#3d7dff", fillOpacity:.35})
+    const ic = L.divIcon({className:"", iconSize:[0,0],
+      html:`<div class="personmark"><div class="p">${PERSON_SVG}</div><div class="l">${esc(p.nome)}</div></div>`});
+    camadaOutros.addLayer(L.marker([p.lat,p.lon], {icon:ic, bubblingMouseEvents:false})
       .bindPopup(`<b>${esc(p.nome)}</b>`));
   });
   (d.pontos||[]).forEach(p=>{
     camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:7, color:"#f5a524", weight:2, fillColor:"#f5a524", fillOpacity:.5})
       .bindPopup(`<b>${esc(p.nome)}</b><br>para ${esc(p.pessoa)} · linha ${esc(p.linha)}<br>${fmtDist(p.dist_pessoa)} da pessoa`));
   });
-  // trajetos: caminhada da pessoa até o ponto + ponto de embarque
+  // trajetos: caminhada (por ruas) até o ponto + ponto de embarque/desembarque
   (d.trajetos||[]).forEach(t=>{
-    const p = t.ponto, pos = t.pos;
-    if (pos && p){
-      camadaOutros.addLayer(L.polyline([[pos.lat,pos.lon],[p.lat,p.lon]],
-        {color:"#37b169", weight:3, opacity:.75, dashArray:"6 7", bubblingMouseEvents:false}));
+    const p = t.ponto;
+    const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
+      : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
+    if (caminho.length>1){
+      camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:4, opacity:.8, bubblingMouseEvents:false}));
     }
     if (p){
-      camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#37b169", fillOpacity:.55, bubblingMouseEvents:false})
+      camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
         .bindPopup(`<b>${esc(t.pessoa)}</b><br>linha ${esc(t.linha)} · ${esc(p.nome)}<br>${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé`));
     }
+    if (t.casa){
+      camadaOutros.addLayer(L.polyline(t.casa.caminho||[], {color:"#37b169", weight:2, opacity:.5, dashArray:"3 7", bubblingMouseEvents:false}));
+      camadaOutros.addLayer(L.circleMarker([t.casa.lat,t.casa.lon], {radius:5, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
+        .bindPopup(`<b>${esc(t.pessoa)}</b><br>desça em ${esc(t.casa.nome)}<br>${fmtDist(t.casa.dist_m)} · ~${Math.round(t.casa.tempo_min)} min até casa`));
+    }
   });
+  // casa (zona)
+  casaLayer.clearLayers();
+  if (d.casa){
+    casaLayer.addLayer(L.circle([d.casa.lat, d.casa.lon], {radius:d.casa.raio||150, color:"#37b169",
+      weight:2, fillColor:"#37b169", fillOpacity:.12, bubblingMouseEvents:false}));
+    const hic = L.divIcon({className:"", iconSize:[0,0],
+      html:`<div class="personmark"><div class="p" style="background:#37b169">${HOME_SVG}</div></div>`});
+    casaLayer.addLayer(L.marker([d.casa.lat,d.casa.lon], {icon:hic, bubblingMouseEvents:false}).bindPopup("<b>Casa</b>"));
+  }
   const rotas = d.rotas||{};
   Object.keys(rotas).forEach(sigla=>{
     rotas[sigla].forEach(pts=>{

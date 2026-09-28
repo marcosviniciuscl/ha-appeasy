@@ -28,9 +28,10 @@ possível ter **vários trajetos** por pessoa e **vários horários** por trajet
 
 Com isso o App calcula e mostra:
 
-- o **ponto de embarque** mais próximo da pessoa e a **distância** até ele;
-- o **tempo a pé** (velocidade e fator de rota configuráveis em **Ajustes**) e a
-  **linha da caminhada** no mapa;
+- o **ponto de embarque** (parada mais próxima da linha) e a **distância** até ele;
+- o **tempo a pé** calculado por **ruas** (OSRM) e a **linha da caminhada** no
+  mapa. Em **Ajustes → Casa** dá para cadastrar a casa por `zone.home` ou
+  marcando no mapa — é o que define **ida** (saindo de casa) e **volta**;
 - o **ETA do ônibus** no ponto e o **tempo total** para conseguir pegá-lo;
 - o **risco** de perder o ônibus: *dá tempo*, *corra* ou *pode perder*.
 

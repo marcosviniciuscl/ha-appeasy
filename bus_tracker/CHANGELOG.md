@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.0
+
+- **Zoom por gesto** (pinça) e por duplo toque no mapa, além de botões +/−.
+- **Interface mobile** mais enxuta: usa a altura toda, botões/menus menores.
+- **Campos de linha/pessoa/celular/local** agora são pesquisáveis (datalist).
+- **Zona da casa**: cadastre a casa por entidade do HA (`zone.home`) ou marcando
+  no mapa; os trajetos passam a saber o que é **ida** e **volta**.
+- **Deslocamento por ruas** (OSRM) no lugar da linha reta, com fallback.
+- **Tempo a pé até a parada mais próxima** da linha (não mais o ponto do traço):
+  o ETA do ônibus passa a ser calculado para a parada onde a pessoa embarca.
+- Marcador de **pessoa** e da **casa** no mapa (em vez de um círculo simples).
+
 ## 0.28.0
 
 - **Trajetos**: nova aba para cadastrar quais ônibus cada pessoa pega e os

@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import requests
 
 import ha
+import rotas
 import siumobile as api
 
 log = logging.getLogger("bus_tracker.web")
@@ -315,6 +316,28 @@ class Handler(BaseHTTPRequestHandler):
             motor.salvar(cfg)
             return self._json({"ok": True})
 
+        if caminho == "/api/casa":
+            casa = cfg.setdefault("casa", {})
+            if "entidade" in corpo:
+                casa["entidade"] = str(corpo.get("entidade") or "").strip()
+            if "raio" in corpo:
+                try:
+                    casa["raio"] = max(30, int(corpo["raio"]))
+                except (TypeError, ValueError):
+                    pass
+            if "lat" in corpo and "lon" in corpo:
+                try:
+                    casa["lat"] = float(corpo["lat"])
+                    casa["lon"] = float(corpo["lon"])
+                except (TypeError, ValueError):
+                    casa["lat"] = casa["lon"] = None
+            if "osrm_base" in corpo:
+                cfg["ajustes"]["osrm_base"] = str(corpo.get("osrm_base") or "").strip()
+                rotas.configurar(cfg["ajustes"]["osrm_base"])
+            motor.salvar(cfg)
+            motor.registrar("Casa/zonas atualizadas")
+            return self._json({"ok": True, "casa": casa})
+
         if caminho == "/api/trajetos":
             trajeto = self._limpa_trajeto(corpo.get("trajeto") or corpo)
             if not trajeto.get("pessoa"):
@@ -491,6 +514,7 @@ class Handler(BaseHTTPRequestHandler):
             "pessoas": cfg.get("pessoas", []),
             "regras": cfg.get("regras", []),
             "trajetos": cfg.get("trajetos", []),
+            "casa": cfg.get("casa", {}),
             "mapa": cfg.get("mapa", {}),
             "cidade": api.cidade_atual(),
             "cidades": api.cidades(),
