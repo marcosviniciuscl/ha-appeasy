@@ -1,5 +1,5 @@
 name: "YouTube para Telegram"
-version: "1.0.6"
+version: "1.0.7"
 slug: "youtube_telegram"
 description: >-
   Recebe links do YouTube pelo Telegram, baixa o vídeo ou o áudio e devolve no
@@ -8,8 +8,6 @@ description: >-
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
 url: "https://github.com/marcosviniciuscl/ha-appeasy/tree/main/youtube-telegram"
 startup: services
 boot: auto

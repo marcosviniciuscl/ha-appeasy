@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.3
+
+- Remove arquiteturas obsoletas (`armv7`, `armhf`, `i386`): agora só `aarch64` e
+  `amd64`.
+- Troca o tipo de mapa legado `addon_config` por `app_config`.
+- Remove o `build.yaml` (não é mais usado) e usa a imagem base explícita no
+  Dockerfile.
+
 ## 3.0.2
 
 - `linhas_monitoradas` volta a ser uma lista com botão de adicionar (formato

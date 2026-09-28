@@ -1,5 +1,5 @@
 name: "Bus Tracker"
-version: "3.0.2"
+version: "3.0.3"
 slug: "bus_tracker"
 description: >-
   Ônibus ao vivo das cidades que usam o sistema SIUMobile, com painel de avisos,
@@ -9,16 +9,13 @@ url: "https://github.com/marcosviniciuscl/ha-appeasy/tree/main/bus_tracker"
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
-  - i386
 init: false
 homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:bus-clock
 map:
-  - addon_config:rw
+  - app_config:rw
 options:
   cidade: "feira_de_santana"
   intervalo_segundos: 30

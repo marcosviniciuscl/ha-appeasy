@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- Remove arquiteturas obsoletas (`armv7`, `armhf`): agora só `aarch64` e `amd64`.
+
 ## 1.0.6
 
 - `usuarios_autorizados` vira uma lista no formato `["str?"]`, com botão de

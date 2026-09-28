@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="1.0.6"
+ARG BUILD_VERSION="1.0.7"
 ARG BUILD_ARCH="amd64"
 
 FROM ghcr.io/home-assistant/base:latest
@@ -10,7 +10,7 @@ ARG BUILD_ARCH
 LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
-  io.hass.arch="aarch64|amd64|armv7|armhf" \
+  io.hass.arch="aarch64|amd64" \
   org.opencontainers.image.authors="Marcos <marcosviniciuscl@outlook.com>" \
   org.opencontainers.image.title="YouTube para Telegram" \
   org.opencontainers.image.description="Baixa vídeos e áudios do YouTube pelo Telegram, entrega no chat e usa o MinIO para arquivos grandes." \
