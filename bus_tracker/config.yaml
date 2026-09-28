@@ -1,10 +1,10 @@
 name: "Bus Tracker"
-version: "0.35.0"
+version: "0.36.0"
 slug: "bus_tracker"
 description: >-
-  Ônibus ao vivo das cidades que usam o sistema SIUMobile, com painel de avisos,
-  mapa e rastreio no celular. Escolha a cidade nas opções ou informe a URL/praça
-  manualmente.
+  Ônibus ao vivo das cidades que usam o sistema SIUMobile, com mapa, trajetos,
+  avisos e rastreio no celular. Toda a configuração é feita dentro do próprio
+  painel (aba Ajustes).
 url: "https://github.com/marcosviniciuscl/ha-appeasy/tree/main/bus_tracker"
 arch:
   - aarch64
@@ -14,19 +14,3 @@ homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:bus-clock
-map:
-  - app_config:rw
-options:
-  cidade: "feira_de_santana"
-  intervalo_segundos: 30
-  linhas_monitoradas: []
-  api_base: ""
-  api_praca: ""
-  app_package: ""
-schema:
-  cidade: "list(feira_de_santana|belo_horizonte)"
-  intervalo_segundos: int(5,300)
-  linhas_monitoradas: ["str?"]
-  api_base: "str?"
-  api_praca: "str?"
-  app_package: "str?"

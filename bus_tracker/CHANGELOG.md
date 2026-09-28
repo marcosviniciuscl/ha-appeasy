@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.36.0
+
+- **Configuração só no painel**: removidas todas as opções do App no Home
+  Assistant; cidade, intervalos, linhas e demais ajustes ficam na aba Ajustes.
+- **Botões do mapa no canto** também no mobile (grade 2×3 no canto superior
+  direito, em vez de uma faixa no meio da tela).
+- **Rota com animação no sentido do ônibus** ao selecionar o veículo (tracinhos
+  em movimento na direção do trajeto).
+- Clicar no mapa **volta para a aba Mapa e fecha os painéis** abertos.
+- **Destaque do trajeto ativo** agora marca **todos os ônibus candidatos** da
+  linha (não só o melhor), além do ponto de embarque e da rota.
+- Escondida a **barra de rolagem** dos cards/painéis.
+- Explicação na interface das opções de **Trajeto sem linha escolhida**
+  (monitoradas x cidade).
+
 ## 0.35.0
 
 - **Criar trajeto por uma parada da rota**: ao tocar no ônibus, cada parada do

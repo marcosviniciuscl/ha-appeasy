@@ -67,9 +67,9 @@
   .leaflet-bottom{bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px)}
   .map-pills{position:absolute;z-index:22;left:14px;right:14px;
              top:calc(var(--hdr) + env(safe-area-inset-top) + 10px);display:flex;gap:8px}
-  .map-controls{position:absolute;z-index:22;right:14px;
-                top:calc(var(--hdr) + env(safe-area-inset-top) + 54px);
-                display:flex;gap:8px}
+  .map-controls{position:absolute;z-index:22;right:12px;
+                top:calc(var(--hdr) + env(safe-area-inset-top) + 46px);
+                display:grid;grid-template-columns:repeat(2,40px);gap:8px;justify-items:center}
 
   /* ---------- botões flutuantes / pills ---------- */
   .fab{width:40px;height:40px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;cursor:pointer;
@@ -123,6 +123,10 @@
                 calc(var(--nav) + env(safe-area-inset-bottom) + 22px)}
   main section{display:none}
   main section.on{display:block}
+  /* esconde a barra de rolagem (o scroll continua funcionando no toque) */
+  main,.detail,.log,body,html{scrollbar-width:none;-ms-overflow-style:none}
+  main::-webkit-scrollbar,.detail::-webkit-scrollbar,.log::-webkit-scrollbar,
+  body::-webkit-scrollbar,html::-webkit-scrollbar{width:0;height:0;display:none}
 
   .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:12px;margin-bottom:10px}
   .card h2{font-size:14px;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
@@ -210,6 +214,9 @@
   @keyframes correRota{to{stroke-dashoffset:-24}}
   .leaflet-container .rotaDestaque{filter:drop-shadow(0 0 7px rgba(61,125,255,.95));
                                    stroke-dasharray:14 10;animation:correRota 1s linear infinite}
+  /* fluxo no sentido do trajeto (setas em movimento na rota selecionada) */
+  .leaflet-container .rotaAnim{stroke-linecap:round;stroke-dasharray:1 15;animation:fluxo .9s linear infinite}
+  @keyframes fluxo{to{stroke-dashoffset:-16}}
   /* ponto de embarque do trajeto que está acontecendo: borda azul piscando */
   .leaflet-container .pontoDestaque{animation:piscaPonto 1s ease-in-out infinite}
   @keyframes piscaPonto{
@@ -264,7 +271,7 @@
     .rail .tab-btn.on{background:var(--acento);color:#20160a}
 
     .map-pills{left:104px;right:auto}
-    .map-controls{flex-direction:column;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
+    .map-controls{grid-template-columns:40px;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
                   right:18px;left:auto}
     .detail{left:auto;right:18px;top:calc(var(--hdr) + env(safe-area-inset-top) + 200px);
             bottom:auto;width:370px;max-height:calc(100vh - 300px)}
@@ -446,6 +453,7 @@
         <option value="monitoradas">Usar as linhas monitoradas no app</option>
         <option value="cidade">Descobrir linhas da cidade que atendem o destino</option>
       </select>
+      <p class="hint"><b>Monitoradas</b>: só considera as linhas que o app já acompanha (mapa/outros trajetos) e que passam pelo destino — rápido e previsível. <b>Cidade</b>: descobre as linhas que atendem o destino pelas previsões das paradas de lá, mesmo que você não as monitore — mais amplo, porém mais lento e menos preciso.</p>
       <label class="f">Raio de busca do destino no mapa (m)</label>
       <input type="number" id="aj-raio-destino" step="500">
       <label class="f">Avisar quando faltar (m)</label>
@@ -901,6 +909,13 @@ async function carregarPontosProximos(latlng){
     msg("tr-msg", "Não deu para buscar os pontos agora.", false);
   }
 }
+function fecharModais(){
+  ["rota-info", "trajetos-sheet", "pontos-sheet"].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+  limparSelecao();
+}
 function aoClicarMapa(e){
   if (marcandoDestino){
     // toque no mapa (fora de um ponto): carrega os pontos próximos
@@ -914,7 +929,9 @@ function aoClicarMapa(e){
     msg("casa-msg", "Posição marcada. Clique em Salvar casa.");
     return;
   }
-  limparSelecao();
+  // clicou no mapa: volta para a aba Mapa e fecha os painéis
+  if (document.body.dataset.tab !== "mapa") trocarAba("mapa");
+  fecharModais();
 }
 function iniciarMapa(){
   if (mapa) return;
@@ -946,7 +963,12 @@ async function carregarMapa(primeiro){
 
   // trajetos que estão "acontecendo agora": ônibus e ponto de embarque em destaque
   const ativos = (d.trajetos||[]).filter(t=>t.agora);
-  busesDestaque = new Set(ativos.filter(t=>t.bus_id).map(t=>String(t.bus_id)));
+  const idsDestaque = new Set();
+  ativos.forEach(t=>{
+    (t.bus_ids||[]).forEach(i=>idsDestaque.add(String(i)));
+    if (t.bus_id) idsDestaque.add(String(t.bus_id));
+  });
+  busesDestaque = idsDestaque;
   const linhasAtivas = new Set(ativos.map(t=>norm(t.linha)));
   // o ônibus do trajeto ativo aparece mesmo que a linha não esteja selecionada
   const exibidos = (d.onibus||[]).filter(b=>
@@ -1098,6 +1120,8 @@ async function desenharRotaSel(){
   if ((d.rota||[]).length > 1){
     const pl = L.polyline(d.rota, {color:"#3d7dff", weight:5, opacity:.85, interactive:false}).addTo(grupo);
     bounds = pl.getBounds();
+    // tracinho animado no sentido em que o ônibus está indo
+    L.polyline(d.rota, {color:"#ffffff", weight:3, opacity:.9, className:"rotaAnim", interactive:false}).addTo(grupo);
   }
   paradas.forEach((p, idx)=>{
     const cor = p.passou ? "#8a94a6" : "#3d7dff";

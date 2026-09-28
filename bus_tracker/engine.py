@@ -862,14 +862,16 @@ class Motor:
             if len(onibus) >= 3:
                 break
 
-        # está "acontecendo agora"? (dentro da janela do horário e com ônibus)
-        agora_bool, bus_id = False, None
+        # está "acontecendo agora"? (dentro da janela do horário)
+        agora_bool, bus_id, bus_ids = False, None, []
         try:
             prox = self._proximo_horario(t, datetime.now(_tz(self.cfg["ajustes"]["fuso"])))
             janela = float(self.cfg["ajustes"].get("janela_saida_min", 30))
-            if prox and prox[1] <= janela and onibus:
+            if prox and prox[1] <= janela:
                 agora_bool = True
-                bus_id = onibus[0]["id"]
+                bus_ids = [b["id"] for b in onibus]
+                if onibus:
+                    bus_id = onibus[0]["id"]
         except Exception:
             pass
         return {
@@ -879,7 +881,7 @@ class Motor:
             "horarios": list(t.get("horarios") or []), "ativo": bool(t.get("ativo", True)),
             "pos": {"lat": origem[0], "lon": origem[1]},
             "destino": self._destino_trajeto(t.get("destino") or {}, linhas),
-            "agora": agora_bool, "bus_id": bus_id,
+            "agora": agora_bool, "bus_id": bus_id, "bus_ids": bus_ids,
             "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
             "caminho": ponto["caminho"], "fonte": ponto["fonte"],
             "onibus": onibus,

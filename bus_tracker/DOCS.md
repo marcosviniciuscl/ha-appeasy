@@ -58,45 +58,44 @@ ponto** ganha animação de deslocamento.
 
 ## Cidades
 
-Você pode escolher a cidade **dentro do painel**, na aba **Ônibus → Cidade**.
-A lista de linhas (e tudo o mais) passa a usar a cidade escolhida, e a seleção
-fica salva. As opções do App abaixo servem apenas como valor inicial.
+Você escolhe a cidade **dentro do painel**, na aba **Ônibus → Cidade**. A lista
+de linhas (e tudo o mais) passa a usar a cidade escolhida, e a seleção fica
+salva.
 
-| Cidade | Valor de `cidade` |
+| Cidade | Valor |
 | --- | --- |
 | Feira de Santana (BA) | `feira_de_santana` |
 | Belo Horizonte (MG) | `belo_horizonte` |
 
 ### Outra cidade (SIUMobile)
 
-No painel, escolha **Outra cidade…** e preencha URL base, praça e pacote. As
-opções abaixo do App fazem o mesmo (e valem como valor inicial):
+No painel, escolha **Outra cidade…** e preencha URL base, praça e pacote.
 
-| Opção | Para que serve |
+| Campo | Para que serve |
 | --- | --- |
-| `api_base` | URL base da API, ex.: `http://xxx.siumobile.com.br:6060/siumobile-ws-v01/rest/ws` |
-| `api_praca` | Código da praça usado nos endpoints V3 (ex.: `BHZ`; em Feira é `null`) |
-| `app_package` | Pacote do app oficial, enviado no cabeçalho `X-Requested-With` (ex.: `com.tacom.siumobilebh`) |
+| URL base | URL da API, ex.: `http://xxx.siumobile.com.br:6060/siumobile-ws-v01/rest/ws` |
+| Praça | Código da praça usado nos endpoints V3 (ex.: `BHZ`; em Feira é `null`) |
+| Pacote | Pacote do app oficial, enviado no cabeçalho `X-Requested-With` (ex.: `com.tacom.siumobilebh`) |
 
 > Use as ferramentas de desenvolvedor do navegador ou a captura de tráfego do
 > app oficial para descobrir esses três valores.
 
-## Opções
+## Configuração
 
-| Opção | Padrão | Descrição |
-| --- | --- | --- |
-| `cidade` | `feira_de_santana` | Cidade embutida (ver tabela acima). |
-| `intervalo_segundos` | `30` | Intervalo entre leituras da API (5–300 s). |
-| `linhas_monitoradas` | `[]` | Linhas extras monitoradas mesmo sem aviso configurado. |
-| `api_base` | — | Sobrescreve a URL base (cidade não listada). |
-| `api_praca` | — | Sobrescreve o código da praça. |
-| `app_package` | — | Sobrescreve o pacote do app. |
+**Toda a configuração é feita dentro do painel** (aba **Ajustes**) — o App não
+tem mais opções na tela de configuração do Home Assistant. Por lá você muda:
 
-Dentro do painel, a aba **Ajustes** ainda permite mudar:
+- cidade, e URL/praça/pacote para cidades não listadas;
+- linhas e pessoas exibidas no mapa;
+- trajetos, horários e pontos de destino;
+- distância para avisar, tempos, velocidade a pé, fator de rota e margem;
+- intervalo de leitura da API e de atualização do rastreio;
+- raio de busca do destino no mapa e como tratar trajeto **sem linha escolhida**;
+- fuso horário, casa/zona de referência e servidor OSRM;
+- modo simulação (não envia notificações).
 
-- distância para avisar, tempo mínimo entre avisos e velocidade mínima p/ o ETA;
-- intervalo de leitura e de atualização do rastreio;
-- fuso horário e modo simulação (não envia notificações).
+A configuração fica salva em `/data/bus_tracker.json` e sobrevive a reinícios e
+atualizações.
 
 ## Observações
 
