@@ -882,9 +882,12 @@ function renderTrajetos(){
       const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
       // estado ao vivo: mostra quando as condições do trajeto valem agora
       const live = trajetosLive.find(x=>String(x.id)===String(t.id));
+      const rr = rastreiosLive.find(x=>String(x.trajeto_id)===String(t.id));
       const b = live && live.bus_id ? ((live.onibus||[])[0]||{}) : null;
       let agora = "";
-      if (b){
+      if (rr && rr.a_bordo){
+        agora = '<span class="pill agora"><span class="dt"></span>A BORDO</span>';
+      } else if (b){
         const rc = b.risco==="correr" ? "correr" : (b.risco==="perdeu" ? "perdeu" : "");
         const eta = b.eta_min!=null ? " · ~"+Math.round(b.eta_min)+" min" : "";
         agora = `<span class="pill agora ${rc}"><span class="dt"></span>AGORA${eta}</span>`;
@@ -893,7 +896,8 @@ function renderTrajetos(){
       } else if (live){
         agora = '<span class="pill">sem ônibus agora</span>';
       }
-      const cls = b ? (" encontro risco-"+(b.risco||"ok")) : "";
+      const cls = (rr && rr.a_bordo) ? " encontro risco-ok"
+        : (b ? (" encontro risco-"+(b.risco||"ok")) : "");
       const pontoFixo = (t.ponto && t.ponto.lat!=null)
         ? '<div class="meta">ponto de embarque fixo: '+esc(t.ponto.nome)+'</div>' : "";
       return `<div class="item${cls}"><div>
@@ -1174,6 +1178,7 @@ async function carregarMapa(primeiro){
   iniciarMapa();
   const d = await api("/api/mapa");
   trajetosLive = d.trajetos||[];
+  rastreiosLive = d.rastreios||[];
   const norm = s => String(s||"").replace(/^0+/,"") || "0";
   const sel = new Set((est.mapa.onibus||[]).map(norm));
 
@@ -1598,6 +1603,7 @@ function renderMapaChips(){
 }
 let dadosOnibus = [];
 let trajetosLive = [];   // estado ao vivo dos trajetos (de /api/mapa)
+let rastreiosLive = [];  // rastreios ativos (para mostrar "a bordo")
 async function carregarOnibus(){
   const d = await api("/api/mapa");
   dadosOnibus = d.onibus||[];

@@ -1405,6 +1405,8 @@ class Motor:
             if not t.get("ativo", True):
                 continue
             chave = str(t.get("id"))
+            if (self.rastreios.get(chave) or {}).get("a_bordo"):
+                continue   # já está no ônibus: quem cuida é o tick do rastreio
             try:
                 info = self.calcular_trajeto(t)
             except Exception as e:
@@ -1439,8 +1441,12 @@ class Motor:
             # rastreio automático (Live Activity): segue o ônibus até passar no
             # ponto (o tick encerra quando ele passa)
             if chave not in self.rastreios:
+                _d = info.get("destino") or {}
+                _dp = (_d.get("lat"), _d.get("lon")) if _d.get("lat") is not None \
+                    and _d.get("lon") is not None else None
                 self.iniciar_rastreio(info["pessoa_id"], bus["linha"], bus["id"],
-                                      trajeto_id=t.get("id"), ponto=info["ponto"])
+                                      trajeto_id=t.get("id"), ponto=info["ponto"],
+                                      destino=_dp, destino_nome=_d.get("nome") or "")
 
     # ------------------------------------------------------------ notificações
     def _notificar(self, pessoa, titulo, mensagem, extra=None, simulacao_tag=None):
@@ -1602,12 +1608,78 @@ class Motor:
             },
         )
 
+    def push_a_bordo(self, pessoa, rastreio, bus, eta_dest=None, restante_m=None, primeiro=False):
+        """Aviso ao vivo enquanto está a bordo, até o destino."""
+        chave = rastreio.get("chave") or pessoa["id"]
+        partes = ["🚌 a bordo"]
+        if eta_dest is not None:
+            partes.append(f"chega ~{eta_dest:.0f} min")
+        if restante_m is not None:
+            partes.append(_fmt_dist(restante_m))
+        dest = rastreio.get("destino_nome")
+        if dest:
+            partes.append(f"→ {dest}")
+        self._notificar(
+            pessoa,
+            f"Linha {bus['linha']} · a caminho",
+            " · ".join(partes),
+            {
+                "tag": f"onibus_bordo_{chave}",
+                "group": f"onibus_{chave}",
+                "channel": "Bus Tracker",
+                "live_update": True,
+                "silent": not primeiro,
+                "alert_once": not primeiro,
+                "sticky": True,
+                "notification_icon": "mdi:bus",
+                "color": "#22c55e",
+                "actions": [{"action": f"PARAR|{chave}", "title": "Parar"}],
+            },
+        )
+
+    def push_destino(self, pessoa, rastreio, bus):
+        """Aviso de chegada ao destino (para descer)."""
+        chave = rastreio.get("chave") or pessoa["id"]
+        dest = rastreio.get("destino_nome") or "seu destino"
+        self._notificar(
+            pessoa,
+            "🏁 Chegou!",
+            f"Você chegou em {dest}. Desça aqui.",
+            {
+                "tag": f"onibus_chegou_destino_{chave}",
+                "group": f"onibus_{chave}",
+                "channel": "Bus Tracker",
+                "color": "#22c55e",
+                "notification_icon": "mdi:flag-checkered",
+                "interruption_level": "time-sensitive",
+                "actions": [{"action": f"PARAR|{chave}", "title": "Ok"}],
+            },
+        )
+
+    def _vel_pessoa(self, r, pos):
+        """Velocidade da pessoa (km/h) a partir da última posição guardada."""
+        if not pos:
+            return None
+        agora = time.time()
+        ant = r.get("pos_ant")
+        r["pos_ant"] = (agora, pos[0], pos[1])
+        if not ant:
+            return None
+        dt = agora - ant[0]
+        if dt < 5 or dt > 300:
+            return None
+        d = geo.haversine(pos, (ant[1], ant[2]))
+        if d < 8:
+            return 0.0
+        return (d / dt) * 3.6
+
     def limpar(self, pessoa, *tags):
         for tag in tags:
             self._notificar(pessoa, "", "clear_notification", {"tag": tag})
 
     # -------------------------------------------------------------- rastreio
-    def iniciar_rastreio(self, pessoa_id, sigla, bus_id, trajeto_id=None, ponto=None):
+    def iniciar_rastreio(self, pessoa_id, sigla, bus_id, trajeto_id=None, ponto=None,
+                         destino=None, destino_nome=""):
         """Liga o rastreio automático de um trajeto (Live Activity)."""
         pessoas = {p["id"]: p for p in self.cfg.get("pessoas", [])}
         pessoa = pessoas.get(pessoa_id)
@@ -1644,6 +1716,12 @@ class Motor:
                 "ultimo_push": 0.0,
                 "d0": d or 0,
                 "ponto": ponto,
+                "destino": destino,
+                "destino_nome": destino_nome,
+                "a_bordo": False,
+                "perto_desde": 0.0,
+                "pos_ant": None,
+                "ultimo_push_bordo": 0.0,
             }
         self.registrar(f"Rastreio automático: {pessoa['nome']} → linha {sigla} (veículo {bus_id})")
         return True
@@ -1656,7 +1734,7 @@ class Motor:
         pessoas = {p["id"]: p for p in self.cfg.get("pessoas", [])}
         pessoa = pessoas.get(r.get("pessoa_id"))
         if pessoa:
-            tags = [f"onibus_rastreio_{chave}"]
+            tags = [f"onibus_rastreio_{chave}", f"onibus_bordo_{chave}"]
             if limpar_chegou:
                 tags.append(f"onibus_chegou_{chave}")
             self.limpar(pessoa, *tags)
@@ -1668,11 +1746,12 @@ class Motor:
         return True
 
     def tick_rastreios(self):
-        """Atualiza os Live Activities automáticos em andamento."""
+        """Atualiza os Live Activities automáticos: espera → a bordo → destino."""
         with self.lock:
             ativos = list(self.rastreios.values())
         pessoas = {p["id"]: p for p in self.cfg.get("pessoas", [])}
         cadencia = float(self.cfg["ajustes"].get("atualizacao_rastreio_s", 90))
+        limiar_embarque = 100      # m: distância ao ônibus para contar embarque
         for r in ativos:
             chave = r.get("chave") or r["pessoa_id"]
             pessoa = pessoas.get(r["pessoa_id"])
@@ -1700,17 +1779,46 @@ class Motor:
                         continue
                 self.parar_rastreio(chave)
                 continue
-            alvo = self._alvo_rastreio(pessoa, r)
-            if not alvo:
-                continue
             rota = None
             try:
                 rota = api.rota_do_itinerario(bus["cod_it"])
             except Exception:
                 rota = None
+            pos_p = self.posicao(pessoa.get("entidade"))
+            vel_p = self._vel_pessoa(r, pos_p)
+            d_bus = None
+            if pos_p and bus.get("lat") is not None:
+                d_bus = geo.haversine(pos_p, (bus["lat"], bus["lon"]))
+
+            # já embarcou: acompanha até o destino
+            if r.get("a_bordo"):
+                self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia)
+                continue
+
+            alvo = self._alvo_rastreio(pessoa, r)
+            if not alvo:
+                continue
             s_alvo = self.s_do_alvo(alvo, rota) if rota else None
             if s_alvo is None or bus.get("s") is None:
                 continue
+
+            # --- detecta o embarque: pessoa junto do ônibus por um tempo, com ele
+            #     andando (parado no ponto o ônibus se afasta; a pé não acompanha) ---
+            junto = d_bus is not None and d_bus <= limiar_embarque
+            andando = bool(bus.get("em_movimento")) or (vel_p is not None and vel_p >= 10)
+            if junto and andando:
+                if not r.get("perto_desde"):
+                    r["perto_desde"] = time.time()
+                elif time.time() - r["perto_desde"] >= 20:
+                    r["a_bordo"] = True
+                    r["ultimo_push_bordo"] = 0
+                    self.registrar(f"{pessoa['nome']} embarcou na linha {r['linha']} (veículo {bus['id']})")
+                    self.limpar(pessoa, f"onibus_chegou_{chave}", f"onibus_rastreio_{chave}")
+                    self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia)
+                    continue
+            else:
+                r["perto_desde"] = 0.0
+
             dr = s_alvo - bus["s"]
             vel = max(bus.get("vel_kmh") or 0.0, float(self.cfg["ajustes"].get("velocidade_min_kmh", 12)))
             eta = (max(dr, 0.0) / 1000) / vel * 60
@@ -1719,20 +1827,44 @@ class Motor:
                 self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
                 continue
             if dr <= CHEGADA_M and not r.get("avisou_chegou"):
-                with self.lock:
-                    if chave in self.rastreios:
-                        self.rastreios[chave]["avisou_chegou"] = True
+                r["avisou_chegou"] = True
                 self.push_chegou(pessoa, r, bus, alvo, max(dr, 0.0))
-            if time.time() - r["ultimo_push"] >= cadencia or r["ultimo_push"] == 0:
+            if time.time() - r.get("ultimo_push", 0) >= cadencia or not r.get("ultimo_push"):
                 # o primeiro aviso do rastreio alerta (som/vibração); os demais
                 # são atualizações silenciosas para não incomodar a cada 90 s
                 self.push_rastreio(pessoa, r, bus, alvo, eta, max(dr, 0.0),
-                                   primeiro=not r["ultimo_push"])
-                with self.lock:
-                    if chave in self.rastreios:
-                        self.rastreios[chave]["ultimo_push"] = time.time()
-                        if not self.rastreios[chave]["d0"]:
-                            self.rastreios[chave]["d0"] = max(dr, 0.0)
+                                   primeiro=not r.get("ultimo_push"))
+                r["ultimo_push"] = time.time()
+                if not r.get("d0"):
+                    r["d0"] = max(dr, 0.0)
+
+    def _tick_a_bordo(self, pessoa, r, bus, rota, d_bus, cadencia):
+        """Enquanto está a bordo: mostra a chegada ao destino e avisa quando chega."""
+        chave = r.get("chave") or pessoa["id"]
+        # afastou-se muito do veículo: provavelmente desceu
+        if d_bus is not None and d_bus > 400:
+            self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
+            return
+        dest = r.get("destino")
+        s_dest = None
+        if rota and dest:
+            s_dest, _ = rota.projetar(dest)
+        ultimo = r.get("ultimo_push_bordo", 0)
+        if s_dest is None or bus.get("s") is None:
+            if time.time() - ultimo >= cadencia or not ultimo:
+                self.push_a_bordo(pessoa, r, bus, None, None, primeiro=not ultimo)
+                r["ultimo_push_bordo"] = time.time()
+            return
+        restante = max(0.0, s_dest - bus["s"])
+        vel = max(bus.get("vel_kmh") or 0.0, float(self.cfg["ajustes"].get("velocidade_min_kmh", 12)))
+        eta = (restante / 1000) / vel * 60
+        if restante <= CHEGADA_M:
+            self.push_destino(pessoa, r, bus)
+            self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
+            return
+        if time.time() - ultimo >= cadencia or not ultimo:
+            self.push_a_bordo(pessoa, r, bus, eta, restante, primeiro=not ultimo)
+            r["ultimo_push_bordo"] = time.time()
 
     def _alvo_rastreio(self, pessoa, r):
         """Alvo do rastreio: o ponto do trajeto, se houver; senão o da linha."""

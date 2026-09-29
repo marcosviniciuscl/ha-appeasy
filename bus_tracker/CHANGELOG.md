@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.506.0
+
+- **Detecção de embarque**: quando a pessoa fica **junto do ônibus** (a ≤ 100 m
+  dele) por ~20 s **enquanto ele anda**, o app entende que ela **embarcou**.
+  (Parada no ponto o ônibus se afasta; caminhando não dá para acompanhar.)
+- **Modo "a bordo"**: ao embarcar, o aviso ao vivo passa a mostrar
+  **"🚌 a bordo · chega ~X min · → destino"** e, ao chegar no destino, envia
+  **"🏁 Chegou! Desça aqui."**. Enquanto a bordo, o app **para de avisar para
+  sair** e **não encerra** o rastreio quando o ônibus passa do ponto — segue até
+  o destino. A lista de trajetos mostra **A BORDO**.
+
 ## 0.505.0
 
 - **Escolher o ponto de embarque**: no cadastro do trajeto há o botão
