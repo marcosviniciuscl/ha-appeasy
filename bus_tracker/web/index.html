@@ -85,11 +85,12 @@
 
   /* ---------- painel lateral de detalhes (mapa) ---------- */
   .detail{position:absolute;z-index:25;left:0;right:0;
-          bottom:calc(var(--nav) + env(safe-area-inset-bottom));
-          border-radius:20px 20px 0 0;padding:22px 14px 16px;
+          bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px);
+          border-radius:20px 20px 0 0;padding:22px 14px 18px;
           box-shadow:0 -12px 44px rgba(0,0,0,.5);
           max-height:min(46vh, 440px);overflow:auto;animation:sobe .2s cubic-bezier(.2,.7,.3,1);
           transition:max-height .26s cubic-bezier(.2,.7,.3,1)}
+  .detail .corpo{padding-bottom:14px}
   /* puxador do painel: arraste para baixo para recolher, para cima para abrir */
   .detail .grab{position:absolute;top:0;left:0;right:0;height:20px;z-index:3;cursor:grab;
                 display:grid;place-items:center;touch-action:none;
@@ -98,7 +99,7 @@
                        background:var(--txt2);opacity:.45;transition:opacity .15s,width .15s}
   .detail .grab:active::after,.detail.min .grab::after{opacity:.8;width:52px}
   .detail.min{max-height:72px;overflow:hidden;padding-bottom:12px}
-  .detail.grande{max-height:min(80vh, 760px)}
+  .detail.grande{max-height:min(calc(100vh - var(--nav) - var(--hdr) - 24px), 760px)}
   .detail.oculto .corpo{display:none}
   @keyframes sobe{from{transform:translateY(16px);opacity:.3}to{transform:none;opacity:1}}
   .detail h2{font-size:15px;margin:0 0 10px;font-weight:680;display:flex;align-items:center;gap:8px}
@@ -183,6 +184,17 @@
   .item .nome{font-weight:600}
   .item .meta{font-size:12px;color:var(--txt2)}
   .item .dir{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  /* ponto de encontro (pessoa x ônibus) em destaque, na cor do risco */
+  .item.encontro{border-left:5px solid var(--txt2)}
+  .item.encontro.risco-ok{border-left-color:var(--ok)}
+  .item.encontro.risco-correr{border-left-color:var(--acento)}
+  .item.encontro.risco-perdeu{border-left-color:var(--erro)}
+  .item .rot-ponto{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+        color:var(--txt2);margin-bottom:3px}
+  .pill.agora{background:rgba(55,177,105,.16);color:var(--ok);border:1px solid rgba(55,177,105,.45)}
+  .pill.agora.correr{background:rgba(245,165,36,.16);color:var(--acento);border-color:rgba(245,165,36,.45)}
+  .pill.agora.perdeu{background:rgba(229,72,77,.16);color:var(--erro);border-color:rgba(229,72,77,.45)}
+  .pill.agora .dt{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;margin-right:5px}
   .log{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:260px;overflow:auto}
   .log div{padding:3px 0;border-bottom:1px solid var(--linha);color:var(--txt2)}
   .log b{color:var(--txt);font-weight:500}
@@ -820,10 +832,25 @@ function renderTrajetos(){
       const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
       const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
       const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
-      return `<div class="item"><div>
+      // estado ao vivo: mostra quando as condições do trajeto valem agora
+      const live = trajetosLive.find(x=>String(x.id)===String(t.id));
+      const b = live && live.bus_id ? ((live.onibus||[])[0]||{}) : null;
+      let agora = "";
+      if (b){
+        const rc = b.risco==="correr" ? "correr" : (b.risco==="perdeu" ? "perdeu" : "");
+        const eta = b.eta_min!=null ? " · ~"+Math.round(b.eta_min)+" min" : "";
+        agora = `<span class="pill agora ${rc}"><span class="dt"></span>AGORA${eta}</span>`;
+      } else if (live && live.longe){
+        agora = '<span class="pill">ponto longe</span>';
+      } else if (live){
+        agora = '<span class="pill">sem ônibus agora</span>';
+      }
+      const cls = b ? (" encontro risco-"+(b.risco||"ok")) : "";
+      return `<div class="item${cls}"><div>
         <div class="nome">${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
         <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(tipoTxt)} · ${esc(dias)}</div>
       </div><div class="dir">
+        ${agora}
         <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
         <button class="bt sec sm" onclick="editarTrajeto('${t.id}')">Editar</button>
         <button class="bt del" onclick="apagarTrajeto('${t.id}')">Excluir</button>
@@ -1058,6 +1085,9 @@ function aoClicarMapa(e){
 }
 function iniciarMapa(){
   if (mapa) return;
+  // popups (card do ônibus/ponto) sobem o suficiente para não ficarem atrás do menu inferior
+  L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(24, 80);
+  L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(24, 110);
   mapa = L.map("mapa", {
     zoomControl:false, attributionControl:true,
     touchZoom:true, scrollWheelZoom:true, doubleClickZoom:true, boxZoom:true, keyboard:true,
@@ -1083,6 +1113,7 @@ function iniciarMapa(){
 async function carregarMapa(primeiro){
   iniciarMapa();
   const d = await api("/api/mapa");
+  trajetosLive = d.trajetos||[];
   const norm = s => String(s||"").replace(/^0+/,"") || "0";
   const sel = new Set((est.mapa.onibus||[]).map(norm));
 
@@ -1260,15 +1291,18 @@ async function carregarMapa(primeiro){
     } else {
       status = "sem ônibus que atenda esse horário";
     }
-    return `<div class="item"><div>
+    const riscoCls = t.bus_id && b ? (b.risco||"ok") : "";
+    return `<div class="item${riscoCls?" encontro risco-"+riscoCls:""}"><div>
+      <div class="rot-ponto">ponto de encontro</div>
       <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
-      <div class="meta">${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé · ${esc(tipoTxt)}</div>
+      <div class="meta">🚏 ${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé · ${esc(tipoTxt)}</div>
       <div class="meta">${status}${total}${fora}</div>
     </div></div>`;
   }).join("") : '<div class="vazio">Nenhum trajeto ativo para mostrar.</div>';
 
   if (primeiro && exibidos.length===0) mapa.setView(centroMapa(), 13);
   if (onibusSel) desenharRotaSel();
+  renderTrajetos();   // atualiza o "agora" da lista de trajetos
 }
 
 /* ------------------------------------------------ rota do ônibus selecionado */
@@ -1503,6 +1537,7 @@ function renderMapaChips(){
   chips("chips-pessoas", (est.pessoas||[]).map(p=>({id:p.id, rotulo:p.nome})), selPessoas, marcarMapaSujo);
 }
 let dadosOnibus = [];
+let trajetosLive = [];   // estado ao vivo dos trajetos (de /api/mapa)
 async function carregarOnibus(){
   const d = await api("/api/mapa");
   dadosOnibus = d.onibus||[];

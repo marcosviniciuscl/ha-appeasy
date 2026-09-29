@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.501.0
+
+- **Ponto de encontro em destaque na lateral**: o painel **Trajetos** (lado
+  direito do mapa) agora marca o **ponto de encontro** da pessoa com o ônibus
+  com uma **borda na cor do risco** e mostra as informações relevantes (ponto,
+  distância, tempo a pé, ETA do ônibus, risco).
+- **Selo "AGORA"** na lista **Trajetos cadastrados**: quando as condições do
+  trajeto valem naquele momento (tem ônibus indo ao destino), aparece um selo
+  verde/laranja/vermelho **AGORA · ~X min**; senão, "sem ônibus agora".
+- **Card de informações no celular** agora para **acima do menu** inferior (não
+  fica mais atrás da barra de abas) e o balão do ônibus/ponto é deslocado para
+  não ficar atrás do menu.
+
 ## 0.50.1
 
 - **Ônibus "perdeu" continua destacado, em vermelho**: quando nenhum ônibus do
