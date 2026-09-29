@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.503.0
+
+- **Caminhada calculada a pé de verdade**: o roteamento deixou de usar o perfil
+  de **carro** (que inflava a distância a pé — ex.: 1302 m quando a pé são
+  1040 m) e passou a usar um roteador **a pé** (FOSSGIS `routed-foot`). Ajustes
+  feitos à mão que apontavam para outro servidor são respeitados.
+- **Ponto de embarque escolhido pela caminhada real**: quando há mais de um
+  candidato perto (parada oficial e/ou ponto do traçado), o app compara a
+  **distância a pé** entre eles e escolhe a menor, em vez de comparar só a linha
+  reta — evita mandar você atravessar a avenida quando há um ponto melhor.
+- O **log de diagnóstico** agora lista os **candidatos** de cada linha, com a
+  distância a pé, para dar para ver por que um ponto foi escolhido.
+
 ## 0.502.0
 
 - **Tocar na notificação abre o App no mapa**: os avisos agora levam um

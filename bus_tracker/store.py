@@ -26,7 +26,7 @@ def _padroes():
             "fator_rota": 1.3,                # ruas ≈ 30% mais que a linha reta
             "margem_embarque_min": 2,         # chegar com essa folga no ponto
             "janela_saida_min": 30,           # avalia trajetos nessa janela antes do horário
-            "osrm_base": "https://router.project-osrm.org",  # roteamento por ruas
+            "osrm_base": "https://routing.openstreetmap.de/routed-foot",  # roteamento a pé
             "raio_destino_m": 3000,       # raio p/ achar pontos ao marcar o destino no mapa
             "dist_max_embarque_m": 2000,  # limite de caminhada até o ponto de embarque
             # trajeto sem linha: "monitoradas" = linhas já monitoradas no app;
@@ -56,6 +56,9 @@ def carregar():
                     cfg[chave] = valor
         except Exception as e:
             log.error(f"config corrompida, usando padrões: {e}")
+    # migra o roteador antigo (linha reta por ruas "driving") para o a pé
+    if cfg["ajustes"].get("osrm_base") == "https://router.project-osrm.org":
+        cfg["ajustes"]["osrm_base"] = "https://routing.openstreetmap.de/routed-foot"
     return cfg
 
 

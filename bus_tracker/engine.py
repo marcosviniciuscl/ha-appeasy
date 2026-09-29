@@ -866,7 +866,7 @@ class Motor:
             return None
         return self._montar_ponto(ref, melhor[2].ponto_em(melhor[0]), "onde o ônibus passa")
 
-    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250):
+    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250, t=None):
         """Ponto de embarque no sentido do destino + ônibus que vão passar nele.
 
         Só considera itinerários que **passam no destino** e pontos que estejam
@@ -951,17 +951,36 @@ class Motor:
             return saida
 
         ordenadas = sorted(validas.values(), key=lambda e: e["dist"])
-        # ponto FIXO: sempre o ponto válido mais próximo da pessoa. O que muda
-        # é o ônibus que passa nele — quando um passa, o próximo que vier assume.
-        e = ordenadas[0]
-        # se o mais próximo é um ponto sem parada, prefere a parada oficial mais
-        # próxima quando ela não for muito mais longe (o ônibus para de verdade)
+        # A escolha é pela caminhada REAL (a pé). Em linha reta dois pontos podem
+        # parecer equivalentes, mas um exigir atravessar a avenida. Só consulta o
+        # roteador quando os candidatos estão perto em linha reta (< 350 m), para
+        # não pesar; fora disso a linha reta já decide.
+        top = ordenadas[:3]
+        if ref and len(top) > 1 and (top[-1]["dist"] - top[0]["dist"]) <= 350:
+            for c in top:
+                try:
+                    info = rotas_ruas.caminhada(ref, (c["parada"]["lat"], c["parada"]["lon"]))
+                    c["dist_pe"] = info["dist_m"] if info else c["dist"]
+                except Exception:
+                    c["dist_pe"] = c["dist"]
+            e = min(top, key=lambda x: x.get("dist_pe", x["dist"]))
+        else:
+            e = ordenadas[0]
+        # parada oficial é preferida quando a caminhada não fica muito mais longa
+        # (nela o ônibus para de verdade)
+        _pe = lambda c: c.get("dist_pe", c["dist"])
         if not e.get("oficial", True):
             for oficial in ordenadas:
                 if oficial.get("oficial", True):
-                    if oficial["dist"] - e["dist"] <= snap_parada_m:
+                    if _pe(oficial) - _pe(e) <= snap_parada_m:
                         e = oficial
                     break
+        if t is not None:
+            amostra = ", ".join(
+                f"{c['parada']['nome'][:26]} {round(_pe(c))}m"
+                + ("" if c.get("oficial", True) else " (rota)")
+                for c in ordenadas[:3])
+            self._diag(t, f"linha {self.sigla_exib(sigla)}: candidatos: {amostra}")
         return e["parada"], cands_da(e)
 
     def _risco(self, t_pessoa, t_bus, margem):
@@ -1066,7 +1085,7 @@ class Motor:
         for sigla in linhas:
             if destino_pos:
                 try:
-                    parada, candidatos = self._embarque_destino(sigla, destino_pos, ref)
+                    parada, candidatos = self._embarque_destino(sigla, destino_pos, ref, t=t)
                 except Exception as e:
                     log.debug(f"trajeto {t.get('id')} linha {sigla} (destino): {e}")
                     parada, candidatos = None, []
