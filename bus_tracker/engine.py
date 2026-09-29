@@ -832,21 +832,25 @@ class Motor:
             return None
         return self._montar_ponto(ref, melhor[2].ponto_em(melhor[0]), "onde o ônibus passa")
 
-    def _embarque_destino(self, sigla, destino, ref):
-        """Parada de embarque no sentido do destino + ônibus que vão passar nela.
+    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250):
+        """Ponto de embarque no sentido do destino + ônibus que vão passar nele.
 
-        Só considera paradas de itinerários que **passam no destino** e que
-        estejam **antes** dele. Casa o ônibus pela **mesma parada (itinerário)**
-        — não por projeção geométrica — para não mandar você a uma parada onde o
-        ônibus não para. Prefere a parada mais próxima que tenha um ônibus indo
-        ao destino; se nenhuma tiver ônibus agora, devolve a mais próxima válida.
+        Só considera itinerários que **passam no destino** e pontos que estejam
+        **antes** dele. Além das paradas oficiais, considera o **ponto do traçado
+        onde o ônibus passa** mais perto da pessoa — assim, quando não há parada
+        oficial por perto, o app não manda você para uma parada muito mais
+        distante. Casa o ônibus pela **mesma parada (itinerário)** — não por
+        projeção geométrica — para não mandar você a um ponto onde o ônibus não
+        passa. Escolhe o ponto mais próximo de você; uma parada oficial só é
+        preferida se não ficar muito mais longe que o ponto do traçado (aí o
+        ônibus para de verdade nela).
         """
         vel_min = float(self.cfg["ajustes"].get("velocidade_min_kmh", 12))
         with self.lock:
             buses = [dict(b) for b in self.onibus.values()
                      if norm_sigla(b["linha"]) == norm_sigla(sigla)]
 
-        # paradas válidas: chave -> {parada, dist, its: {cod_it: (s_p, s_dest, rota)}}
+        # válidas: chave -> {parada, dist, its: {cod_it: (s_p, s_dest, rota)}, oficial}
         validas = {}
         for cod_it, _ in self.itinerarios.get(norm_sigla(sigla), {}).get("its", [])[:8]:
             try:
@@ -869,9 +873,23 @@ class Motor:
                 e = validas.get(chave)
                 if not e:
                     e = {"parada": p, "dist": geo.haversine(ref, (p["lat"], p["lon"])),
-                         "its": {}}
+                         "its": {}, "oficial": True}
                     validas[chave] = e
                 e["its"][cod_it] = (s_p, s_dest, rota)
+            # ponto do traçado onde o ônibus passa, mais perto da pessoa
+            # (usado quando não há parada oficial por perto)
+            if ref:
+                s_ref, off_ref = rota.projetar(ref)
+                if s_ref is not None and off_ref <= off_rota_max_m and s_ref <= s_dest - 50:
+                    ponto = rota.ponto_em(s_ref)
+                    chave = (round(ponto[0], 5), round(ponto[1], 5))
+                    e = validas.get(chave)
+                    if not e:
+                        e = {"parada": {"nome": "onde o ônibus passa",
+                                        "lat": ponto[0], "lon": ponto[1], "cod": None},
+                             "dist": off_ref, "its": {}, "oficial": False}
+                        validas[chave] = e
+                    e["its"][cod_it] = (s_ref, s_dest, rota)
         if not validas:
             return None, []
 
@@ -899,9 +917,17 @@ class Motor:
             return saida
 
         ordenadas = sorted(validas.values(), key=lambda e: e["dist"])
-        # ponto FIXO: sempre a parada válida mais próxima da pessoa. O que muda
-        # é o ônibus que passa nela — quando um passa, o próximo que vier assume.
+        # ponto FIXO: sempre o ponto válido mais próximo da pessoa. O que muda
+        # é o ônibus que passa nele — quando um passa, o próximo que vier assume.
         e = ordenadas[0]
+        # se o mais próximo é um ponto sem parada, prefere a parada oficial mais
+        # próxima quando ela não for muito mais longe (o ônibus para de verdade)
+        if not e.get("oficial", True):
+            for oficial in ordenadas:
+                if oficial.get("oficial", True):
+                    if oficial["dist"] - e["dist"] <= snap_parada_m:
+                        e = oficial
+                    break
         return e["parada"], cands_da(e)
 
     def _risco(self, t_pessoa, t_bus, margem):

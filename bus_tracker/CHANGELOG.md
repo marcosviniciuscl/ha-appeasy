@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46.0
+
+- **Ponto de embarque não fica mais longe do que o necessário**: quando não há
+  parada oficial perto de você, o trajeto passa a usar o **ponto do traçado onde
+  o ônibus passa** (no sentido do destino), em vez de te mandar para a parada
+  oficial mais próxima — que às vezes ficava a mais de 1 km. Exemplo real: o
+  ônibus passa a ~190 m e o app mandava andar ~1,2 km até a parada.
+- A **parada oficial** continua sendo preferida quando ela não fica muito mais
+  longe que o ponto do traçado (o ônibus para de verdade nela).
+
 ## 0.45.0
 
 - **Painéis do mapa no celular viram gavetas**: arraste o puxador **para baixo**

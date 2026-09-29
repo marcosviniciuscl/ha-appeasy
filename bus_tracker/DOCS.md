@@ -46,17 +46,21 @@ ponto*):
 | **Fico livre** | a hora que você fica disponível | pega o **próximo ônibus** no ponto mais próximo depois disso |
 | **Chegar no destino** | a hora que você quer chegar | acha o **melhor horário para sair** e o ônibus que ainda chega a tempo |
 
-O ponto de embarque é sempre a **parada mais próxima que o ônibus (indo ao
-destino) atende**, e não muda enquanto você espera — quando o ônibus passa, o
-próximo que vier assume o destaque.
+O ponto de embarque é sempre o **ponto mais próximo que o ônibus (indo ao
+destino) atende** — a **parada oficial** mais perto ou, quando não há parada
+oficial por perto, o **ponto do traçado onde o ônibus passa**. Ele não muda
+enquanto você espera; quando o ônibus passa, o próximo que vier assume o
+destaque. A parada oficial é preferida quando não fica muito mais longe que o
+ponto do traçado.
 
 Com isso o App calcula e mostra:
 
-- o **ponto de embarque** (a parada mais próxima **que fica no sentido do seu
-  destino** — só entram itinerários que passam no destino e paradas antes dele)
-  e a **distância** até ele;
+- o **ponto de embarque** (o ponto mais próximo **que fica no sentido do seu
+  destino** — só entram itinerários que passam no destino e pontos antes dele,
+  sejam paradas oficiais ou o ponto do traçado onde o ônibus passa) e a
+  **distância** até ele;
 - o **tempo a pé** calculado por **ruas** (OSRM) e a **linha da caminhada** no
-  mapa, sempre até a **parada mais próxima** da linha. Em **Ajustes → Casa** dá
+  mapa, sempre até o **ponto de embarque**. Em **Ajustes → Casa** dá
   para cadastrar uma zona (por `zone.home` ou marcando no mapa), usada como
   origem quando a pessoa não tem localização no HA;
 - o **ETA do ônibus** no ponto e o **tempo total** para conseguir pegá-lo;
