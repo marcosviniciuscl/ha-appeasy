@@ -866,13 +866,12 @@ class Motor:
             return None
         return self._montar_ponto(ref, melhor[2].ponto_em(melhor[0]), "onde o ônibus passa")
 
-    def _candidatos_linha(self, sigla, destino, ref, off_rota_max_m=700):
-        """Pontos de embarque válidos da linha, no sentido do destino.
+    def _candidatos_linha(self, sigla, destino, ref):
+        """Paradas OFICIAIS da linha, no sentido do destino (antes dele).
 
-        Junta as paradas oficiais dos itinerários que passam no destino (antes
-        dele) com o ponto do traçado onde o ônibus passa. Devolve
+        Só usa paradas de verdade (onde o ônibus para). Devolve
         (validas, ordenadas) — `ordenadas` por distância em linha reta; cada item
-        tem 'parada', 'dist', 'its' e 'oficial'.
+        tem 'parada', 'dist', 'its' (s por itinerário) e 'oficial'.
         """
         validas = {}
         for cod_it, _ in self.itinerarios.get(norm_sigla(sigla), {}).get("its", [])[:8]:
@@ -899,42 +898,24 @@ class Motor:
                          "its": {}, "oficial": True}
                     validas[chave] = e
                 e["its"][cod_it] = (s_p, s_dest, rota)
-            # ponto do traçado onde o ônibus passa, mais perto da pessoa
-            if ref:
-                s_ref, off_ref = rota.projetar(ref)
-                if s_ref is not None and off_ref <= off_rota_max_m and s_ref <= s_dest - 50:
-                    ponto = rota.ponto_em(s_ref)
-                    chave = (round(ponto[0], 5), round(ponto[1], 5))
-                    e = validas.get(chave)
-                    if not e:
-                        e = {"parada": {"nome": "onde o ônibus passa",
-                                        "lat": ponto[0], "lon": ponto[1], "cod": None},
-                             "dist": off_ref, "its": {}, "oficial": False}
-                        validas[chave] = e
-                    e["its"][cod_it] = (s_ref, s_dest, rota)
         return validas, sorted(validas.values(), key=lambda e: e["dist"])
 
-    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250,
-                          t=None, ponto_fixo=None):
+    def _embarque_destino(self, sigla, destino, ref, t=None, ponto_fixo=None):
         """Ponto de embarque no sentido do destino + ônibus que vão passar nele.
 
-        Só considera itinerários que **passam no destino** e pontos que estejam
-        **antes** dele. Além das paradas oficiais, considera o **ponto do traçado
-        onde o ônibus passa** mais perto da pessoa — assim, quando não há parada
-        oficial por perto, o app não manda você para uma parada muito mais
-        distante. Casa o ônibus pela **mesma parada (itinerário)** — não por
-        projeção geométrica — para não mandar você a um ponto onde o ônibus não
-        passa. Escolhe o ponto mais próximo de você; uma parada oficial só é
-        preferida se não ficar muito mais longe que o ponto do traçado (aí o
-        ônibus para de verdade nela). Se `ponto_fixo` for informado, usa esse
-        ponto (quando ele for válido para a linha).
+        Só considera **paradas oficiais** de itinerários que **passam no destino**
+        e que estejam **antes** dele (onde o ônibus realmente para). Escolhe a
+        parada **mais próxima da pessoa pela caminhada a pé** (entre as mais
+        próximas em linha reta). Casa o ônibus pela **mesma parada (itinerário)**,
+        não por projeção geométrica. Se `ponto_fixo` for informado, usa esse ponto
+        (quando ele for uma parada válida para a linha).
         """
         vel_min = float(self.cfg["ajustes"].get("velocidade_min_kmh", 12))
         with self.lock:
             buses = [dict(b) for b in self.onibus.values()
                      if norm_sigla(b["linha"]) == norm_sigla(sigla)]
 
-        validas, ordenadas = self._candidatos_linha(sigla, destino, ref, off_rota_max_m)
+        validas, ordenadas = self._candidatos_linha(sigla, destino, ref)
         if not validas:
             return None, []
 
@@ -971,11 +952,10 @@ class Motor:
                     melhor = (c, d)
             if melhor and melhor[1] <= 80:
                 return melhor[0]["parada"], cands_da(melhor[0])
-        # A escolha é pela caminhada REAL (a pé). Em linha reta dois pontos podem
-        # parecer equivalentes, mas um exigir atravessar a avenida. Só consulta o
-        # roteador para os candidatos a até 350 m do mais próximo em linha reta
-        # (até 5), para não pesar; fora disso a linha reta já decide.
-        perto = [c for c in ordenadas if c["dist"] - ordenadas[0]["dist"] <= 350][:5]
+        # escolhe a parada mais próxima pela caminhada REAL (a pé). Em linha reta
+        # duas paradas podem parecer equivalentes, mas uma exigir atravessar a
+        # avenida; consulta o roteador para as até 6 mais próximas em linha reta.
+        perto = [c for c in ordenadas if c["dist"] - ordenadas[0]["dist"] <= 500][:6]
         if ref and len(perto) > 1:
             for c in perto:
                 try:
@@ -986,21 +966,11 @@ class Motor:
             e = min(perto, key=lambda x: x.get("dist_pe", x["dist"]))
         else:
             e = ordenadas[0]
-        # parada oficial é preferida quando a caminhada não fica muito mais longa
-        # (nela o ônibus para de verdade)
         _pe = lambda c: c.get("dist_pe", c["dist"])
-        if not e.get("oficial", True):
-            for oficial in ordenadas:
-                if oficial.get("oficial", True):
-                    if _pe(oficial) - _pe(e) <= snap_parada_m:
-                        e = oficial
-                    break
         if t is not None:
-            amostra = ", ".join(
-                f"{c['parada']['nome'][:26]} {round(_pe(c))}m"
-                + ("" if c.get("oficial", True) else " (rota)")
-                for c in ordenadas[:4])
-            self._diag(t, f"linha {self.sigla_exib(sigla)}: candidatos: {amostra}")
+            amostra = ", ".join(f"{c['parada']['nome'][:26]} {round(_pe(c))}m"
+                                for c in ordenadas[:4])
+            self._diag(t, f"linha {self.sigla_exib(sigla)}: paradas: {amostra}")
         return e["parada"], cands_da(e)
 
     def candidatos_embarque(self, t):

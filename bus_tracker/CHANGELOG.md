@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.508.0
+
+- **Sempre paradas oficiais**: o ponto de embarque passa a ser **só paradas de
+  ônibus de verdade** (onde o veículo para). Removido o "onde o ônibus passa"
+  (ponto do traçado), que às vezes mandava para um lugar onde o ônibus não para.
+- A parada é sempre a **mais próxima da pessoa pela caminhada a pé** (entre as
+  mais próximas em linha reta), considerando as ruas.
+- O **"Sugerir pontos"** também lista apenas as paradas oficiais.
+
 ## 0.507.0
 
 - **Embarque mais rígido**: além de ficar junto do ônibus por ~20 s, agora exige
