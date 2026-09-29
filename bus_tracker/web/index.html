@@ -1840,6 +1840,7 @@ setInterval(carregarEstado, 60000);
 (async function init(){
   document.querySelectorAll("select").forEach(aprimorarSelect);
   document.querySelectorAll("input[list]").forEach(aprimorarDatalist);
+  trocarAba("mapa");   // ao abrir (inclusive pela notificação) começa no mapa
   await carregarEstado();
   novaPessoa(); novoTrajeto();
   await carregarMapa(true);

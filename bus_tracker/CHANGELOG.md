@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.502.0
+
+- **Tocar na notificação abre o App no mapa**: os avisos agora levam um
+  `clickAction` apontando para o painel do App (via ingress). Ao tocar na
+  notificação do Home Assistant, abre direto a aba **Mapa**.
+
 ## 0.501.0
 
 - **Ponto de encontro em destaque na lateral**: o painel **Trajetos** (lado

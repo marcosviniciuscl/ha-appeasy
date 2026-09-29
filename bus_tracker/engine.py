@@ -1363,8 +1363,16 @@ class Motor:
             self.registrar(f"{pessoa['nome']} sem serviço de notificação configurado", "warning")
             return False
         dados = {"title": titulo, "message": mensagem}
-        if extra:
-            dados["data"] = extra
+        dados_extra = dict(extra or {})
+        # tocar na notificação abre o painel do App (já na aba do mapa)
+        try:
+            ing = ha.ingress_url()
+        except Exception:
+            ing = ""
+        if ing and not dados_extra.get("clickAction"):
+            dados_extra["clickAction"] = ing
+        if dados_extra:
+            dados["data"] = dados_extra
         if self.cfg["ajustes"].get("simulacao"):
             self.registrar(f"[SIMULAÇÃO] {pessoa['nome']} ← {titulo} · {mensagem}")
             return True

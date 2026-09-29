@@ -21,11 +21,40 @@ log = logging.getLogger("bus_tracker.ha")
 
 HA_BASE = os.environ.get("HA_BASE", "http://supervisor/core/api")
 HA_WS = os.environ.get("HA_WS", "ws://supervisor/core/websocket")
+SUPERVISOR = os.environ.get("SUPERVISOR", "http://supervisor")
 
 
 def token():
     return (os.environ.get("HA_TOKEN") or os.environ.get("SUPERVISOR_TOKEN")
             or os.environ.get("HASSIO_TOKEN") or "")
+
+
+_ingress_cache = None
+
+
+def ingress_url():
+    """URL do painel do App via ingress (ex.: /api/hassio_ingress/<token>/).
+
+    Usada como `clickAction` das notificações: tocar no aviso abre o App no mapa.
+    """
+    global _ingress_cache
+    if _ingress_cache is not None:
+        return _ingress_cache
+    url = ""
+    try:
+        r = requests.get(f"{SUPERVISOR}/addons/self/info",
+                         headers={"Authorization": f"Bearer {token()}"}, timeout=8)
+        if r.status_code == 200:
+            d = (r.json() or {}).get("data") or {}
+            base = (d.get("ingress_url") or "").rstrip("/")
+            entry = (d.get("ingress_entry") or "/").strip()
+            if not entry.startswith("/"):
+                entry = "/" + entry
+            url = base + entry if base else ""
+    except Exception as e:
+        log.debug(f"ingress_url: {e}")
+    _ingress_cache = url
+    return url
 
 
 def _headers():
