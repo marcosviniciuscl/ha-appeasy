@@ -66,12 +66,15 @@ Com isso o App calcula e mostra:
 - o **ETA do ônibus** no ponto e o **tempo total** para conseguir pegá-lo;
 - o **risco** de perder o ônibus: *dá tempo*, *corra* ou *pode perder*.
 
-Perto do horário configurado, o App envia uma notificação para **sair a tempo**
-e, depois, **atualizações em tempo real** com o tempo do ônibus, o seu tempo a
-pé e o risco. O **rastreio ao vivo (Live Activity) começa automaticamente**
-quando o ônibus cumpre as condições do trajeto e termina na chegada — não há
-mais seleção manual. Os cálculos usam a posição real dos ônibus (SIUMobile) e a
-sua localização no Home Assistant.
+Sempre que um ônibus **indo ao destino** estiver chegando perto do ponto de
+embarque, o App envia uma notificação ao vivo com o **tempo do ônibus até o
+ponto**, o **seu tempo a pé** e o **risco** de perdê-lo; se estiver em cima (ou
+já não der tempo), também avisa para **sair agora**. O **rastreio ao vivo (Live
+Activity) começa automaticamente** quando o ônibus cumpre as condições do
+trajeto e acompanha o veículo **até ele passar pelo ponto** — não há seleção
+manual. Isso **não depende de estar dentro da janela do horário**: a janela só
+define o ônibus preferido pelo tipo escolhido. Os cálculos usam a posição real
+dos ônibus (SIUMobile) e a sua localização no Home Assistant.
 
 No mapa, quando um trajeto está **no horário**: o **ônibus** e o **ponto de
 embarque** piscam em **azul**, a **rota** fica destacada e o **caminho até o

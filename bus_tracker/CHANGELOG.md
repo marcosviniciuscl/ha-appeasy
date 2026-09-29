@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.47.0
+
+- **O trajeto agora monitora o ônibus o tempo todo**, não só na janela do
+  horário: assim que existe um ônibus **indo ao destino** e chegando perto do
+  ponto de embarque, o app envia o aviso ao vivo com **distância/tempo do ônibus
+  até o ponto**, **seu tempo a pé** e o **risco**. A janela do horário deixou de
+  ser obrigatória para avisar (dentro dela, o ônibus escolhido continua sendo o
+  do tipo de horário).
+- O aviso acompanha o ônibus **até ele passar pelo ponto** (antes parava 200 m
+  antes e encerrava).
+- **Ônibus que sai do início da linha** (a parada de "SAIDA" perto de casa)
+  voltou a ser considerado: o filtro de "já passou da parada" estava com o lado
+  invertido e descartava ônibus que estavam **no/antes** do ponto.
+- **Primeiro aviso do rastreio volta a alertar** (som/vibração). Antes o
+  primeiro "ônibus a X km" chegava **silencioso** no iPhone (as atualizações
+  seguintes é que devem ser silenciosas).
+- O aviso **"🚌 Ônibus chegando!"** não é mais apagado logo em seguida: ao
+  chegar/passar, o app mantém esse aviso na tela e para só a atualização do
+  rastreio.
+- O **ponto de embarque e o ônibus destacado** agora são sempre da **mesma
+  linha** (antes, quando não havia ônibus no horário, o ponto podia ser de uma
+  linha e o ônibus de outra).
+
 ## 0.46.0
 
 - **Ponto de embarque não fica mais longe do que o necessário**: quando não há
