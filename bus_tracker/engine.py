@@ -953,17 +953,17 @@ class Motor:
         ordenadas = sorted(validas.values(), key=lambda e: e["dist"])
         # A escolha é pela caminhada REAL (a pé). Em linha reta dois pontos podem
         # parecer equivalentes, mas um exigir atravessar a avenida. Só consulta o
-        # roteador quando os candidatos estão perto em linha reta (< 350 m), para
-        # não pesar; fora disso a linha reta já decide.
-        top = ordenadas[:3]
-        if ref and len(top) > 1 and (top[-1]["dist"] - top[0]["dist"]) <= 350:
-            for c in top:
+        # roteador para os candidatos a até 350 m do mais próximo em linha reta
+        # (até 5), para não pesar; fora disso a linha reta já decide.
+        perto = [c for c in ordenadas if c["dist"] - ordenadas[0]["dist"] <= 350][:5]
+        if ref and len(perto) > 1:
+            for c in perto:
                 try:
                     info = rotas_ruas.caminhada(ref, (c["parada"]["lat"], c["parada"]["lon"]))
                     c["dist_pe"] = info["dist_m"] if info else c["dist"]
                 except Exception:
                     c["dist_pe"] = c["dist"]
-            e = min(top, key=lambda x: x.get("dist_pe", x["dist"]))
+            e = min(perto, key=lambda x: x.get("dist_pe", x["dist"]))
         else:
             e = ordenadas[0]
         # parada oficial é preferida quando a caminhada não fica muito mais longa
@@ -979,7 +979,7 @@ class Motor:
             amostra = ", ".join(
                 f"{c['parada']['nome'][:26]} {round(_pe(c))}m"
                 + ("" if c.get("oficial", True) else " (rota)")
-                for c in ordenadas[:3])
+                for c in ordenadas[:4])
             self._diag(t, f"linha {self.sigla_exib(sigla)}: candidatos: {amostra}")
         return e["parada"], cands_da(e)
 

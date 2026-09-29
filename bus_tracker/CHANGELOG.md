@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.504.0
+
+- A escolha do ponto de embarque agora compara a **caminhada a pé** de **todos**
+  os candidatos próximos (até 5, dentro de 350 m em linha reta do mais perto),
+  não só os 3 primeiros. Ex.: na Getúlio Vargas o app confere 3417 (1040 m) e
+  2801-2969 (1069 m) e escolhe o menor.
+
 ## 0.503.0
 
 - **Caminhada calculada a pé de verdade**: o roteamento deixou de usar o perfil
