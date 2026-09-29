@@ -866,25 +866,14 @@ class Motor:
             return None
         return self._montar_ponto(ref, melhor[2].ponto_em(melhor[0]), "onde o ônibus passa")
 
-    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250, t=None):
-        """Ponto de embarque no sentido do destino + ônibus que vão passar nele.
+    def _candidatos_linha(self, sigla, destino, ref, off_rota_max_m=700):
+        """Pontos de embarque válidos da linha, no sentido do destino.
 
-        Só considera itinerários que **passam no destino** e pontos que estejam
-        **antes** dele. Além das paradas oficiais, considera o **ponto do traçado
-        onde o ônibus passa** mais perto da pessoa — assim, quando não há parada
-        oficial por perto, o app não manda você para uma parada muito mais
-        distante. Casa o ônibus pela **mesma parada (itinerário)** — não por
-        projeção geométrica — para não mandar você a um ponto onde o ônibus não
-        passa. Escolhe o ponto mais próximo de você; uma parada oficial só é
-        preferida se não ficar muito mais longe que o ponto do traçado (aí o
-        ônibus para de verdade nela).
+        Junta as paradas oficiais dos itinerários que passam no destino (antes
+        dele) com o ponto do traçado onde o ônibus passa. Devolve
+        (validas, ordenadas) — `ordenadas` por distância em linha reta; cada item
+        tem 'parada', 'dist', 'its' e 'oficial'.
         """
-        vel_min = float(self.cfg["ajustes"].get("velocidade_min_kmh", 12))
-        with self.lock:
-            buses = [dict(b) for b in self.onibus.values()
-                     if norm_sigla(b["linha"]) == norm_sigla(sigla)]
-
-        # válidas: chave -> {parada, dist, its: {cod_it: (s_p, s_dest, rota)}, oficial}
         validas = {}
         for cod_it, _ in self.itinerarios.get(norm_sigla(sigla), {}).get("its", [])[:8]:
             try:
@@ -911,7 +900,6 @@ class Motor:
                     validas[chave] = e
                 e["its"][cod_it] = (s_p, s_dest, rota)
             # ponto do traçado onde o ônibus passa, mais perto da pessoa
-            # (usado quando não há parada oficial por perto)
             if ref:
                 s_ref, off_ref = rota.projetar(ref)
                 if s_ref is not None and off_ref <= off_rota_max_m and s_ref <= s_dest - 50:
@@ -924,6 +912,29 @@ class Motor:
                              "dist": off_ref, "its": {}, "oficial": False}
                         validas[chave] = e
                     e["its"][cod_it] = (s_ref, s_dest, rota)
+        return validas, sorted(validas.values(), key=lambda e: e["dist"])
+
+    def _embarque_destino(self, sigla, destino, ref, off_rota_max_m=700, snap_parada_m=250,
+                          t=None, ponto_fixo=None):
+        """Ponto de embarque no sentido do destino + ônibus que vão passar nele.
+
+        Só considera itinerários que **passam no destino** e pontos que estejam
+        **antes** dele. Além das paradas oficiais, considera o **ponto do traçado
+        onde o ônibus passa** mais perto da pessoa — assim, quando não há parada
+        oficial por perto, o app não manda você para uma parada muito mais
+        distante. Casa o ônibus pela **mesma parada (itinerário)** — não por
+        projeção geométrica — para não mandar você a um ponto onde o ônibus não
+        passa. Escolhe o ponto mais próximo de você; uma parada oficial só é
+        preferida se não ficar muito mais longe que o ponto do traçado (aí o
+        ônibus para de verdade nela). Se `ponto_fixo` for informado, usa esse
+        ponto (quando ele for válido para a linha).
+        """
+        vel_min = float(self.cfg["ajustes"].get("velocidade_min_kmh", 12))
+        with self.lock:
+            buses = [dict(b) for b in self.onibus.values()
+                     if norm_sigla(b["linha"]) == norm_sigla(sigla)]
+
+        validas, ordenadas = self._candidatos_linha(sigla, destino, ref, off_rota_max_m)
         if not validas:
             return None, []
 
@@ -950,7 +961,16 @@ class Motor:
             saida.sort(key=lambda x: x["dist_ponto"])
             return saida
 
-        ordenadas = sorted(validas.values(), key=lambda e: e["dist"])
+        # ponto escolhido à mão pelo usuário: usa se for válido para a linha
+        if ponto_fixo and ponto_fixo.get("lat") is not None:
+            alvo_fixo = (ponto_fixo["lat"], ponto_fixo["lon"])
+            melhor = None
+            for c in ordenadas:
+                d = geo.haversine(alvo_fixo, (c["parada"]["lat"], c["parada"]["lon"]))
+                if melhor is None or d < melhor[1]:
+                    melhor = (c, d)
+            if melhor and melhor[1] <= 80:
+                return melhor[0]["parada"], cands_da(melhor[0])
         # A escolha é pela caminhada REAL (a pé). Em linha reta dois pontos podem
         # parecer equivalentes, mas um exigir atravessar a avenida. Só consulta o
         # roteador para os candidatos a até 350 m do mais próximo em linha reta
@@ -982,6 +1002,52 @@ class Motor:
                 for c in ordenadas[:4])
             self._diag(t, f"linha {self.sigla_exib(sigla)}: candidatos: {amostra}")
         return e["parada"], cands_da(e)
+
+    def candidatos_embarque(self, t):
+        """Pontos de embarque possíveis do trajeto, para o usuário escolher.
+
+        Junta, para cada linha, as paradas oficiais (no sentido do destino) e o
+        ponto do traçado onde o ônibus passa, com a **distância a pé** de cada um.
+        """
+        pessoa = next((p for p in self.cfg.get("pessoas", []) if p["id"] == t.get("pessoa")), None)
+        if not pessoa:
+            return []
+        linhas = self.linhas_do_trajeto(t)
+        if not linhas:
+            return []
+        pos = self.posicao(pessoa.get("entidade")) or self.posicao_casa()
+        if not pos:
+            return []
+        destino = self._destino_trajeto(t.get("destino") or {}, linhas)
+        if not destino or destino.get("lat") is None or destino.get("lon") is None:
+            return []
+        destino_pos = (destino["lat"], destino["lon"])
+        saida, vistos = [], set()
+        for sigla in linhas:
+            try:
+                _, ordenadas = self._candidatos_linha(sigla, destino_pos, pos)
+            except Exception:
+                continue
+            for c in ordenadas[:8]:
+                chave = (round(c["parada"]["lat"], 5), round(c["parada"]["lon"], 5))
+                if chave in vistos:
+                    continue
+                vistos.add(chave)
+                try:
+                    info = rotas_ruas.caminhada(pos, (c["parada"]["lat"], c["parada"]["lon"]))
+                    dist_pe = info["dist_m"] if info else c["dist"]
+                except Exception:
+                    dist_pe = c["dist"]
+                saida.append({
+                    "linha": self.sigla_exib(sigla),
+                    "nome": c["parada"]["nome"],
+                    "lat": c["parada"]["lat"], "lon": c["parada"]["lon"],
+                    "cod": c["parada"].get("cod"),
+                    "oficial": bool(c.get("oficial", True)),
+                    "dist_m": round(dist_pe),
+                })
+        saida.sort(key=lambda x: x["dist_m"])
+        return saida
 
     def _risco(self, t_pessoa, t_bus, margem):
         if t_bus is None:
@@ -1085,7 +1151,8 @@ class Motor:
         for sigla in linhas:
             if destino_pos:
                 try:
-                    parada, candidatos = self._embarque_destino(sigla, destino_pos, ref, t=t)
+                    parada, candidatos = self._embarque_destino(sigla, destino_pos, ref, t=t,
+                                                                ponto_fixo=t.get("ponto"))
                 except Exception as e:
                     log.debug(f"trajeto {t.get('id')} linha {sigla} (destino): {e}")
                     parada, candidatos = None, []

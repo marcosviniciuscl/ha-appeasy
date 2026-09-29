@@ -474,6 +474,12 @@
         <input id="tr-destino" list="dl-destinos" placeholder="digite o ponto…" style="flex:1;min-width:160px">
         <button class="bt sec sm" type="button" onclick="marcarDestino()">Escolher no mapa</button>
       </div>
+      <label class="f">Ponto de embarque</label>
+      <div class="row" style="margin-top:0">
+        <button class="bt sec sm" type="button" onclick="sugerirPontosTrajeto()">Sugerir pontos</button>
+        <span class="meta" id="tr-ponto-atual">automático (o mais perto, a pé)</span>
+      </div>
+      <div class="chips" id="tr-pontos"></div>
       <label class="f">O horário informado é…</label>
       <select id="tr-tipo" onchange="renderTipoHorario()">
         <option value="ponto">Quando o ônibus passa no ponto</option>
@@ -811,6 +817,48 @@ function marcarCasa(){
 
 /* ------------------------------------------------ trajetos (cadastro) */
 let editandoTrajeto = null;
+let pontoEscolhidoTrajeto = null;   // ponto de embarque escolhido à mão (ou null = automático)
+
+function renderPontoTrajeto(){
+  const lbl = document.getElementById("tr-ponto-atual");
+  if (lbl) lbl.textContent = pontoEscolhidoTrajeto
+    ? ("fixo: " + pontoEscolhidoTrajeto.nome)
+    : "automático (o mais perto, a pé)";
+}
+async function sugerirPontosTrajeto(){
+  const pessoa = pessoaPorNome(document.getElementById("tr-pessoa").value);
+  if (!pessoa) return msg("tr-msg","Escolha a pessoa antes de sugerir os pontos.", false);
+  const destNome = document.getElementById("tr-destino").value.trim();
+  const dest = destinosLinha.find(p=>p.nome===destNome)
+    || (destinoEscolhido && destinoEscolhido.nome===destNome ? destinoEscolhido : null);
+  if (!dest || dest.lat == null) return msg("tr-msg","Escolha o destino antes de sugerir os pontos.", false);
+  const cx = document.getElementById("tr-pontos");
+  cx.innerHTML = '<span class="meta">calculando os pontos a pé…</span>';
+  const trajeto = {
+    pessoa: pessoa.id, linhas: [...selLinhasTrajeto], tipo_horario: document.getElementById("tr-tipo").value,
+    destino: {cod: dest.cod!=null?String(dest.cod):"", nome: destNome, lat: dest.lat, lon: dest.lon},
+  };
+  let r;
+  try { r = await api("/api/trajeto_candidatos", {trajeto}); } catch(e){ r = {}; }
+  if (!r || !r.ok){ cx.innerHTML = ""; return msg("tr-msg", (r&&r.erro)||"não consegui calcular os pontos", false); }
+  const pontos = r.pontos||[];
+  if (!pontos.length){ cx.innerHTML = '<span class="meta">nenhum ponto no sentido do destino agora.</span>'; return; }
+  const escolhido = p => pontoEscolhidoTrajeto &&
+    Math.abs(pontoEscolhidoTrajeto.lat-p.lat)<1e-5 && Math.abs(pontoEscolhidoTrajeto.lon-p.lon)<1e-5;
+  cx.innerHTML = pontos.map((p,i)=>`<label class="chip ${escolhido(p)?"on":""}" data-i="${i}">
+      <input type="radio" ${escolhido(p)?"checked":""}> ${esc(p.linha)} · ${esc(p.nome)} — ${fmtDist(p.dist_m)} a pé</label>`).join("")
+    + `<label class="chip ${pontoEscolhidoTrajeto?"":"on"}" data-i="-1"><input type="radio" ${pontoEscolhidoTrajeto?"":"checked"}> automático</label>`;
+  cx.querySelectorAll(".chip").forEach(c=>{
+    c.onclick = e=>{
+      e.preventDefault();
+      const i = parseInt(c.dataset.i,10);
+      pontoEscolhidoTrajeto = i<0 ? null : {nome: pontos[i].nome, cod: pontos[i].cod||"",
+                                            lat: pontos[i].lat, lon: pontos[i].lon};
+      renderPontoTrajeto(); sugerirPontosTrajeto();
+    };
+  });
+  renderPontoTrajeto();
+}
 function renderDiasTrajeto(sel){
   const cx = document.getElementById("tr-dias");
   cx.innerHTML = DIAS.map((d,i)=>`<label class="chip ${sel.includes(i)?"on":""}" data-d="${i}">
@@ -846,9 +894,12 @@ function renderTrajetos(){
         agora = '<span class="pill">sem ônibus agora</span>';
       }
       const cls = b ? (" encontro risco-"+(b.risco||"ok")) : "";
+      const pontoFixo = (t.ponto && t.ponto.lat!=null)
+        ? '<div class="meta">ponto de embarque fixo: '+esc(t.ponto.nome)+'</div>' : "";
       return `<div class="item${cls}"><div>
         <div class="nome">${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
         <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(tipoTxt)} · ${esc(dias)}</div>
+        ${pontoFixo}
       </div><div class="dir">
         ${agora}
         <span class="pill ${t.ativo?"ok":""}">${t.ativo?"ativo":"pausado"}</span>
@@ -884,8 +935,12 @@ function novoTrajeto(){
   document.getElementById("tr-ativo").checked = true;
   selLinhasTrajeto = new Set();
   destinoEscolhido = null;
+  pontoEscolhidoTrajeto = null;
   destinosLinha = [];
   document.getElementById("dl-destinos").innerHTML = "";
+  const pontosCx = document.getElementById("tr-pontos");
+  if (pontosCx) pontosCx.innerHTML = "";
+  renderPontoTrajeto();
   renderLinhasTrajeto();
   renderTipoHorario();
   renderDiasTrajeto([0,1,2,3,4]);
@@ -903,6 +958,10 @@ function editarTrajeto(id){
   document.getElementById("tr-ativo").checked = !!t.ativo;
   selLinhasTrajeto = new Set(linhas);
   destinoEscolhido = (t.destino && t.destino.lat != null) ? {...t.destino} : null;
+  pontoEscolhidoTrajeto = (t.ponto && t.ponto.lat != null) ? {...t.ponto} : null;
+  const pontosCx = document.getElementById("tr-pontos");
+  if (pontosCx) pontosCx.innerHTML = "";
+  renderPontoTrajeto();
   renderLinhasTrajeto();
   renderTipoHorario();
   renderDiasTrajeto(t.dias||[]);
@@ -932,7 +991,8 @@ async function salvarTrajeto(){
     pessoa: pessoa.id,
     linhas: [...selLinhasTrajeto],
     tipo_horario: document.getElementById("tr-tipo").value,
-    destino, dias, horarios
+    destino, dias, horarios,
+    ponto: pontoEscolhidoTrajeto,
   };
   const r = await api("/api/trajetos", {trajeto});
   if (r.ok){ msg("tr-msg","Trajeto salvo."); novoTrajeto(); await carregarEstado(); carregarMapa(); }

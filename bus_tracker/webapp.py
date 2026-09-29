@@ -447,6 +447,14 @@ class Handler(BaseHTTPRequestHandler):
             motor.enviar_saida(info, bus)
             return self._json({"ok": True, "info": info})
 
+        if caminho == "/api/trajeto_candidatos":
+            trajeto = self._limpa_trajeto(corpo.get("trajeto") or corpo)
+            if not trajeto.get("pessoa"):
+                return self._erro("informe a pessoa")
+            if not trajeto.get("destino", {}).get("lat"):
+                return self._erro("escolha o destino")
+            return self._json({"ok": True, "pontos": motor.candidatos_embarque(trajeto)})
+
         if caminho == "/api/ha/pessoas":
             pessoas, rastreadores, notificacoes = motor.pessoas_ha()
             return self._json({"pessoas": pessoas, "rastreadores": rastreadores, "notificacoes": notificacoes})
@@ -569,9 +577,23 @@ class Handler(BaseHTTPRequestHandler):
             "destino": {"cod": str(destino.get("cod") or "").strip(),
                         "nome": str(destino.get("nome") or "").strip(),
                         "lat": lat, "lon": lon},
+            "ponto": self._ponto_embarque(t.get("ponto")),
             "dias": sorted(set(dias)) if dias else list(range(7)),
             "horarios": sorted(set(horarios)),
         }
+
+    def _ponto_embarque(self, p):
+        """Ponto de embarque escolhido à mão (ou vazio = automático)."""
+        if not isinstance(p, dict):
+            return {"nome": "", "cod": "", "lat": None, "lon": None}
+        try:
+            plat = float(p.get("lat")) if p.get("lat") not in (None, "") else None
+            plon = float(p.get("lon")) if p.get("lon") not in (None, "") else None
+        except (TypeError, ValueError):
+            plat = plon = None
+        return {"nome": str(p.get("nome") or "").strip(),
+                "cod": str(p.get("cod") or "").strip(),
+                "lat": plat, "lon": plon}
 
     def _hora(self, valor, padrao):
         if isinstance(valor, str) and re.match(r"^\d{1,2}:\d{2}$", valor.strip()):

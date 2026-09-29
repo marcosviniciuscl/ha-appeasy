@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.505.0
+
+- **Escolher o ponto de embarque**: no cadastro do trajeto há o botão
+  **"Sugerir pontos"**, que lista os pontos possíveis da(s) linha(s) no sentido
+  do destino, com a **distância a pé** de cada um (paradas oficiais e o ponto do
+  traçado onde o ônibus passa). Você pode **fixar** um ponto (ou deixar no
+  automático). O app passa a usar o ponto escolhido, sempre recalculando a
+  caminhada pelas ruas. Fica indicado "ponto de embarque fixo" na lista.
+
 ## 0.504.0
 
 - A escolha do ponto de embarque agora compara a **caminhada a pé** de **todos**
