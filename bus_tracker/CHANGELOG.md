@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.49.0
+
+- **Selects funcionando no celular**: os campos de seleção (cidade, tipo de
+  horário e "trajeto sem linha") agora abrem um **dropdown próprio, dentro da
+  tela e legível** — o dropdown nativo aparecia invisível no tema escuro ou fora
+  da tela no WebView.
+- **Chips do mapa não voltam mais sozinhos**: ao remover/adicionar linhas em
+  "O que exibir no mapa", a atualização automática não desfaz mais a seleção
+  antes de salvar; aparece um aviso **"alterações não salvas"** e só o botão
+  **Salvar exibição** aplica.
+- **Desktop sem painel atrás**: nas abas que não são o Mapa, o painel translúcido
+  (sombra/bordas) atrás dos cards foi removido — ficam só os cards da aba sobre o mapa.
+
 ## 0.48.1
 
 - O indicador de **"no ponto"** agora é **estático** (verde, sem pulsar), para

@@ -144,6 +144,24 @@
   label.f{display:block;font-size:12.5px;color:var(--txt2);margin:10px 0 4px}
   input,select,textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--linha);
         border-radius:10px;padding:9px 10px;font-size:16px;font-family:inherit}
+
+  /* dropdown próprio (o <select> nativo fica invisível por cima; as opções
+     abrem numa lista dentro da tela, legível no tema escuro e no WebView) */
+  .csel{position:relative}
+  .csel>select{position:absolute!important;left:0;top:0;width:100%!important;height:100%!important;
+        opacity:0;pointer-events:none;margin:0;padding:0;border:0}
+  .csel .csel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+        background:var(--card2);color:var(--txt);border:1px solid var(--linha);border-radius:10px;
+        padding:9px 10px;font-size:16px;font-family:inherit;text-align:left;cursor:pointer}
+  .csel .csel-btn .cv{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .csel .csel-btn .ar{flex:0 0 auto;opacity:.65;font-size:12px}
+  .csel-list{position:fixed;z-index:1000;display:none;padding:4px;background:var(--card);
+        border:1px solid var(--linha);border-radius:12px;box-shadow:0 18px 46px rgba(0,0,0,.5);
+        max-height:52vh;overflow:auto;-webkit-overflow-scrolling:touch}
+  .csel-list.on{display:block}
+  .csel-list .op{padding:11px 12px;border-radius:8px;font-size:15px;color:var(--txt);cursor:pointer}
+  .csel-list .op:active,.csel-list .op.on{background:var(--card2)}
+  .csel-list .op.on{color:var(--acento);font-weight:600}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -291,11 +309,11 @@
 
   /* ---------- desktop ---------- */
   @media (min-width: 900px){
-    /* o mapa fica sempre visível; o painel de opções abre por cima */
+    /* o mapa fica visível ao fundo; o menu abre numa coluna de cards, sem painel */
     #s-mapa{position:fixed;inset:0;z-index:1;display:block}
     main{position:fixed;z-index:40;left:104px;top:calc(var(--hdr) + env(safe-area-inset-top) + 16px);
          bottom:18px;width:min(460px, calc(100vw - 560px));margin:0;padding:16px;overflow:auto;
-         border-radius:22px;box-shadow:0 24px 60px rgba(0,0,0,.45);display:none}
+         background:transparent;display:none}
     body:not([data-tab="mapa"]) main{display:block}
     nav{display:none}
 
@@ -417,7 +435,7 @@
       <div class="chips" id="chips-linhas"></div>
       <label class="f">Pessoas</label>
       <div class="chips" id="chips-pessoas"></div>
-      <div class="row"><button class="bt" onclick="salvarMapa()">Salvar exibição</button></div>
+      <div class="row"><button class="bt" onclick="salvarMapa()">Salvar exibição</button><span class="meta" id="mapa-aviso" style="display:none">alterações não salvas</span></div>
     </div>
     <div class="card">
       <h2><svg class="ic ci" viewBox="0 0 24 24"><use href="#ic-bus"/></svg>Ônibus ao vivo<span class="tag" id="tag-qtd"></span></h2>
@@ -590,6 +608,7 @@ let onibusSel = null, rotaAjustada = false, marcandoCasa = false;
 let marcandoDestino = false, destinosPick = [], destinoEscolhido = null;
 let editandoRegra = null, editandoPessoa = null;
 let selLinhas = new Set(), selPessoas = new Set();
+let mapaSujo = false;   // chips do mapa mexidos e ainda não salvos
 let selLinhasTrajeto = new Set();
 let paradasSelList = [], paradasSelLinha = "";
 let rotaSelMarkers = [], focoParadaMk = null;
@@ -1460,12 +1479,26 @@ function chips(container, itens, selecionados, aoAlternar){
     };
   });
 }
+function marcarMapaSujo(){
+  mapaSujo = true;
+  const a = document.getElementById("mapa-aviso");
+  if (a) a.style.display = "inline";
+}
 function renderMapaChips(){
   const todas = new Set([...(est.linhas||[]).map(l=>l.sigla), ...(est.linhas_observadas||[])]);
-  selLinhas = new Set(est.mapa.onibus||[]);
-  chips("chips-linhas", [...todas].sort().map(s=>({id:s, rotulo:s})), selLinhas);
-  selPessoas = new Set(est.mapa.pessoas||[]);
-  chips("chips-pessoas", (est.pessoas||[]).map(p=>({id:p.id, rotulo:p.nome})), selPessoas);
+  const pessoasIds = new Set((est.pessoas||[]).map(p=>p.id));
+  if (mapaSujo){
+    // o usuário está mexendo: mantém a seleção dele (tirando o que sumiu)
+    selLinhas = new Set([...selLinhas].filter(s=>todas.has(s)));
+    selPessoas = new Set([...selPessoas].filter(s=>pessoasIds.has(s)));
+  } else {
+    selLinhas = new Set(est.mapa.onibus||[]);
+    selPessoas = new Set(est.mapa.pessoas||[]);
+    const av = document.getElementById("mapa-aviso");
+    if (av) av.style.display = "none";
+  }
+  chips("chips-linhas", [...todas].sort().map(s=>({id:s, rotulo:s})), selLinhas, marcarMapaSujo);
+  chips("chips-pessoas", (est.pessoas||[]).map(p=>({id:p.id, rotulo:p.nome})), selPessoas, marcarMapaSujo);
 }
 let dadosOnibus = [];
 async function carregarOnibus(){
@@ -1488,6 +1521,7 @@ async function carregarOnibus(){
 
 async function salvarMapa(){
   await api("/api/mapa", {onibus:[...selLinhas], pessoas:[...selPessoas], rotas:true, pontos:true});
+  mapaSujo = false;
   await carregarEstado(); carregarMapa();
 }
 
@@ -1627,12 +1661,67 @@ async function laçoMapa(){
     renderLog(d); renderRastreios(d);
   }catch(e){}
 }
+/* -------- select próprio (o dropdown nativo falha no WebView/tema escuro) -------- */
+function aprimorarSelect(sel){
+  if (!sel || sel.dataset.csel) return;
+  sel.dataset.csel = "1";
+  const wrap = document.createElement("div");
+  wrap.className = "csel";
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "csel-btn";
+  btn.innerHTML = '<span class="cv"></span><span class="ar">▾</span>';
+  wrap.appendChild(btn);
+  const list = document.createElement("div");
+  list.className = "csel-list";
+  document.body.appendChild(list);
+  const label = ()=>{ const o = sel.options[sel.selectedIndex];
+    btn.querySelector(".cv").textContent = o ? o.textContent : ""; };
+  const fechar = ()=>{ list.classList.remove("on"); };
+  const abrir = ()=>{
+    list.innerHTML = Array.from(sel.options).map((o,i)=>
+      `<div class="op${i===sel.selectedIndex?" on":""}" data-i="${i}">${esc(o.textContent)}</div>`).join("");
+    list.classList.add("on");
+    const r = btn.getBoundingClientRect();
+    const largura = Math.min(r.width || 240, window.innerWidth - 16);
+    list.style.width = largura + "px";
+    list.style.left = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8)) + "px";
+    list.style.top = (r.bottom + 4) + "px";
+    list.style.maxHeight = Math.max(140, Math.min(window.innerHeight - r.bottom - 16,
+                                                   window.innerHeight * 0.6)) + "px";
+  };
+  btn.addEventListener("click", e=>{ e.stopPropagation();
+    list.classList.contains("on") ? fechar() : abrir(); });
+  list.addEventListener("click", e=>{
+    e.stopPropagation();
+    const op = e.target.closest(".op"); if (!op) return;
+    sel.selectedIndex = +op.dataset.i;
+    sel.dispatchEvent(new Event("change", {bubbles:true}));
+    label(); fechar();
+  });
+  document.addEventListener("click", fechar);
+  window.addEventListener("resize", fechar);
+  window.addEventListener("scroll", e=>{ if (e.target !== list) fechar(); }, true);
+  sel.addEventListener("change", label);
+  new MutationObserver(label).observe(sel, {childList:true, subtree:true,
+                                            attributes:true, attributeFilter:["selected"]});
+  const proto = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  Object.defineProperty(sel, "value", {
+    configurable: true,
+    get(){ return proto.get.call(sel); },
+    set(v){ proto.set.call(sel, v); label(); },
+  });
+  label();
+}
+
 setInterval(()=>carregarMapa(), 12000);
 setInterval(()=>{ if (document.getElementById("s-onibus").classList.contains("on")) carregarOnibus(); }, 12000);
 setInterval(laçoMapa, 15000);
 setInterval(carregarEstado, 60000);
 
 (async function init(){
+  document.querySelectorAll("select").forEach(aprimorarSelect);
   await carregarEstado();
   novaPessoa(); novoTrajeto();
   await carregarMapa(true);
