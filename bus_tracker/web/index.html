@@ -162,6 +162,8 @@
   .csel-list .op{padding:11px 12px;border-radius:8px;font-size:15px;color:var(--txt);cursor:pointer}
   .csel-list .op:active,.csel-list .op.on{background:var(--card2)}
   .csel-list .op.on{color:var(--acento);font-weight:600}
+  .csel-list .op .sub{font-size:12px;color:var(--txt2);margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+  .csel-list .op.vazio-op{color:var(--txt2);cursor:default}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -1715,6 +1717,86 @@ function aprimorarSelect(sel){
   label();
 }
 
+/* -------- lista própria para os campos de busca (o datalist nativo quase
+   não abre no celular): mostra as opções e filtra conforme você digita -------- */
+function _semAcento(s){
+  try { return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+  catch(_) { return String(s||"").toLowerCase(); }
+}
+function aprimorarDatalist(inp){
+  const dl = inp && inp.getAttribute && document.getElementById(inp.getAttribute("list") || "");
+  if (!inp || !dl || inp.dataset.dl) return;
+  inp.dataset.dl = "1";
+  inp.removeAttribute("list");   // evita a lista nativa (duplicada) por cima da nossa
+  const list = document.createElement("div");
+  list.className = "csel-list";
+  document.body.appendChild(list);
+  let atual = [], selecionando = false, abertoEm = 0;
+  const opcoes = ()=> Array.from(dl.options).map(o=>({
+    v: o.value, t: (o.textContent || "").trim() || o.value }));
+  const fechar = ()=>{ list.classList.remove("on"); };
+  const render = (filtro)=>{
+    const f = _semAcento(filtro);
+    atual = opcoes().filter(o=> !f || _semAcento(o.t).includes(f) || _semAcento(o.v).includes(f));
+    list.innerHTML = atual.length
+      ? atual.slice(0, 100).map((o,i)=>{
+          const sub = _semAcento(o.t).includes(_semAcento(o.v)) ? "" :
+            `<div class="sub">${esc(o.v)}</div>`;
+          return `<div class="op" data-i="${i}"><div>${esc(o.t)}</div>${sub}</div>`;
+        }).join("")
+      : '<div class="op vazio-op">sem opções</div>';
+  };
+  const abrir = ()=>{
+    render(inp.value);
+    list.classList.add("on");
+    abertoEm = Date.now();
+    const r = inp.getBoundingClientRect();
+    const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    const largura = Math.min(Math.max(r.width || 220, 220), window.innerWidth - 16);
+    list.style.width = largura + "px";
+    list.style.left = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8)) + "px";
+    const abaixo = vh - r.bottom - 12;
+    const acima = r.top - 12;
+    const altura = Math.max(140, Math.min(vh * 0.5, Math.max(abaixo, acima)));
+    list.style.maxHeight = altura + "px";
+    list.style.top = (abaixo >= 160 || abaixo >= acima)
+      ? (r.bottom + 4) + "px"
+      : Math.max(8, r.top - Math.min(altura, acima) - 4) + "px";
+  };
+  inp.addEventListener("focus", abrir);
+  inp.addEventListener("click", abrir);
+  inp.addEventListener("input", ()=>{ if (!selecionando) { list.classList.contains("on") ? render(inp.value) : abrir(); } });
+  inp.addEventListener("blur", ()=> setTimeout(fechar, 160));
+  // preventDefault mantém o foco no campo (senão o blur fecha a lista antes do toque)
+  list.addEventListener("mousedown", e=> e.preventDefault());
+  list.addEventListener("click", e=>{
+    const op = e.target.closest(".op");
+    if (!op || op.classList.contains("vazio-op")) return;
+    const o = atual[+op.dataset.i];
+    if (!o) return;
+    selecionando = true;
+    inp.value = o.v;
+    inp.dispatchEvent(new Event("input", {bubbles:true}));
+    inp.dispatchEvent(new Event("change", {bubbles:true}));
+    selecionando = false;
+    fechar();
+    // no campo de linhas do trajeto, escolher a opção já adiciona a linha
+    if (inp.id === "tr-linha" && typeof adicionarLinhaTrajeto === "function") adicionarLinhaTrajeto();
+  });
+  document.addEventListener("click", e=>{ if (e.target!==inp && !list.contains(e.target)) fechar(); });
+  // o teclado/orientação muda o viewport: reposiciona a lista em vez de fechá-la
+  window.addEventListener("resize", ()=>{ if (list.classList.contains("on")) abrir(); });
+  // fecha ao rolar, mas ignora o rolamento inicial que o teclado provoca ao focar
+  window.addEventListener("scroll", e=>{
+    if (e.target !== list && Date.now() - abertoEm > 800) fechar();
+  }, true);
+  // o teclado muda o viewport: reposiciona a lista
+  if (window.visualViewport) window.visualViewport.addEventListener("resize",
+    ()=>{ if (list.classList.contains("on")) abrir(); });
+  new MutationObserver(()=>{ if (list.classList.contains("on")) render(inp.value); })
+    .observe(dl, {childList:true, subtree:true});
+}
+
 setInterval(()=>carregarMapa(), 12000);
 setInterval(()=>{ if (document.getElementById("s-onibus").classList.contains("on")) carregarOnibus(); }, 12000);
 setInterval(laçoMapa, 15000);
@@ -1722,6 +1804,7 @@ setInterval(carregarEstado, 60000);
 
 (async function init(){
   document.querySelectorAll("select").forEach(aprimorarSelect);
+  document.querySelectorAll("input[list]").forEach(aprimorarDatalist);
   await carregarEstado();
   novaPessoa(); novoTrajeto();
   await carregarMapa(true);

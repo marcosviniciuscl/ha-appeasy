@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.50.0
+
+- **Campos de busca com lista própria**: os campos de digitar/escolher (pessoa,
+  linha, ponto de destino, celular e localização do HA) agora abrem uma **lista
+  de opções dentro da tela** e vão **filtrando conforme você digita** — o
+  `datalist` nativo quase não abre no celular. Tocar numa opção preenche o campo.
+
 ## 0.49.0
 
 - **Selects funcionando no celular**: os campos de seleção (cidade, tipo de
