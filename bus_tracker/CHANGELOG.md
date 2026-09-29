@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.48.0
+
+- **Localização com idade**: o app passa a mostrar **há quanto tempo o Home
+  Assistant atualizou** a localização da pessoa (no balão da pessoa no mapa e no
+  log de diagnóstico). Se ficar parada por mais de 30 min, a Atividade avisa
+  `⚠ localização parada` — ajuda a ver se o GPS/HA está realmente atualizando.
+- **Pessoa no ponto**: quando a pessoa chega ao ponto de embarque, o mapa **para
+  a animação de caminhada** e marca a pessoa em **verde com um anel pulsante** e
+  o rótulo **"no ponto"** (o balão do ponto também diz "você já está no ponto").
+
 ## 0.47.0
 
 - **O trajeto agora monitora o ônibus o tempo todo**, não só na janela do

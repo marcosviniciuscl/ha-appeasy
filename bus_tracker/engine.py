@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import geo
@@ -32,6 +32,30 @@ def _fmt_dist(m):
     if m is None:
         return "?"
     return f"{m/1000:.1f} km" if m >= 1000 else f"{int(round(m))} m"
+
+
+def _idade_estado(st):
+    """Segundos desde a última atualização do estado no HA (None se não der)."""
+    ts = (st or {}).get("last_updated") or (st or {}).get("last_changed")
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return max(0.0, (datetime.now(timezone.utc) - dt).total_seconds())
+    except Exception:
+        return None
+
+
+def _fmt_idade(s):
+    if s is None:
+        return "?"
+    if s < 90:
+        return f"{int(s)} s"
+    if s < 5400:
+        return f"{int(round(s / 60))} min"
+    return f"{s / 3600:.1f} h"
 
 
 _COR_RISCO = {"ok": "#22c55e", "correr": "#f5a524", "perdeu": "#e5484d",
@@ -75,6 +99,7 @@ class Motor:
         self.pausado = False
         self._cache_destino = {}  # (lat,lon) -> (ts, [siglas]) linhas que atendem o destino
         self._trajeto_log = {}    # trajeto_id -> assinatura do último log (evita repetir)
+        self._aviso_gps = {}      # pessoa_id -> ts do último aviso de GPS parado
 
     # ------------------------------------------------------------------ log
     def registrar(self, msg, nivel="info"):
@@ -537,18 +562,26 @@ class Motor:
         self._cache_pessoas = (agora, (pessoas, rastreadores, notificacoes))
         return pessoas, rastreadores, notificacoes
 
-    def posicao(self, entidade):
+    def posicao_com_idade(self, entidade):
+        """Posição (lat, lon) e há quantos segundos o HA atualizou o estado.
+
+        Devolve (pos, idade_s). `pos` é None se não houver GPS; a idade ajuda a
+        ver se o Home Assistant está realmente atualizando a localização.
+        """
         st = ha.estado(entidade)
         if not st:
-            return None
-        a = st.get("attributes", {})
+            return None, None
+        a = st.get("attributes", {}) or {}
         lat, lon = a.get("latitude"), a.get("longitude")
         try:
             if lat is None or lon is None:
-                return None
-            return float(lat), float(lon)
+                return None, _idade_estado(st)
+            return (float(lat), float(lon)), _idade_estado(st)
         except (TypeError, ValueError):
-            return None
+            return None, _idade_estado(st)
+
+    def posicao(self, entidade):
+        return self.posicao_com_idade(entidade)[0]
 
     # ------------------------------------------------------------------ alvo
     def _rotas_da_linha(self, sigla, limite=6):
@@ -986,11 +1019,20 @@ class Motor:
         linhas = self.linhas_do_trajeto(t)
         if not linhas:
             return None
-        pos_pessoa = self.posicao(pessoa.get("entidade"))
+        pos_pessoa, idade_gps = self.posicao_com_idade(pessoa.get("entidade"))
         ref = pos_pessoa or self.posicao_casa()
         if pos_pessoa:
+            atraso = f" · HA atualizou há {_fmt_idade(idade_gps)}" if idade_gps is not None else ""
             self._diag(t, f"posição da pessoa ({pessoa.get('entidade') or '—'}): "
-                          f"{pos_pessoa[0]:.5f},{pos_pessoa[1]:.5f}")
+                          f"{pos_pessoa[0]:.5f},{pos_pessoa[1]:.5f}{atraso}")
+            if idade_gps is not None and idade_gps > 1800:
+                self._diag(t, f"⚠ localização parada há {_fmt_idade(idade_gps)} — "
+                              "confira o GPS/HA dessa pessoa")
+                chave_gps = pessoa["id"]
+                if time.time() - self._aviso_gps.get(chave_gps, 0) > 3600:
+                    self._aviso_gps[chave_gps] = time.time()
+                    self.registrar(f"⚠ {pessoa['nome']}: o HA não atualiza a localização "
+                                   f"há {_fmt_idade(idade_gps)} — confira o GPS", "warning")
         elif ref:
             self._diag(t, f"sem GPS da pessoa — usando a casa: {ref[0]:.5f},{ref[1]:.5f}")
         else:
@@ -1657,9 +1699,11 @@ class Motor:
         for pid, pessoa in pessoas_cfg.items():
             if not pessoa.get("ativo", True):
                 continue
-            pos = self.posicao(pessoa.get("entidade"))
+            pos, idade_gps = self.posicao_com_idade(pessoa.get("entidade"))
             if pos:
-                lugares[pid] = {"nome": pessoa["nome"], "lat": pos[0], "lon": pos[1]}
+                lugares[pid] = {"id": pid, "nome": pessoa["nome"],
+                                "lat": pos[0], "lon": pos[1],
+                                "idade_s": None if idade_gps is None else round(idade_gps)}
         mapa = self.cfg.get("mapa", {})
         trajetos = []
         for t in self.cfg.get("trajetos", []):

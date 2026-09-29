@@ -76,9 +76,10 @@ manual. Isso **não depende de estar dentro da janela do horário**: a janela s�
 define o ônibus preferido pelo tipo escolhido. Os cálculos usam a posição real
 dos ônibus (SIUMobile) e a sua localização no Home Assistant.
 
-No mapa, quando um trajeto está **no horário**: o **ônibus** e o **ponto de
-embarque** piscam em **azul**, a **rota** fica destacada e o **caminho até o
-ponto** ganha animação de deslocamento.
+No mapa, quando o trajeto tem um ônibus chegando: o **ônibus** e o **ponto de
+embarque** ficam destacados na cor do risco, a **rota** aparece e o **caminho
+até o ponto** ganha animação de deslocamento. Quando a pessoa **chega ao ponto**,
+a animação de caminhada para e ela é marcada em **verde com "no ponto"**.
 
 ## Cidades
 
