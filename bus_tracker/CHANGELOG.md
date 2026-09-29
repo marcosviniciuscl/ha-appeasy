@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.507.0
+
+- **Embarque mais rígido**: além de ficar junto do ônibus por ~20 s, agora exige
+  a pessoa **a ≥ 15 km/h** (velocidade calculada pela posição do GPS) e o
+  **sensor de atividade** (derivado do acelerômetro) indicando **veículo**
+  (`automotive`/`in_vehicle`/`driving`). Se o sensor de atividade não existir, o
+  app usa só a velocidade.
+- Novo campo **"Sensor de atividade"** na pessoa (aba Pessoas). Em branco, o app
+  tenta automaticamente `sensor.<dispositivo>_activity` (ex.: `device_tracker.iphone`
+  → `sensor.iphone_activity`).
+- O app **não** tem acesso ao acelerômetro bruto — o Home Assistant não expõe
+  isso como entidade; o que existe é o sensor de **atividade** do app Companion,
+  que já é derivado do acelerômetro.
+
 ## 0.506.0
 
 - **Detecção de embarque**: quando a pessoa fica **junto do ônibus** (a ≤ 100 m

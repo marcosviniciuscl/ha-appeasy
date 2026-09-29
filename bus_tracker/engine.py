@@ -1673,6 +1673,24 @@ class Motor:
             return 0.0
         return (d / dt) * 3.6
 
+    _ATIVIDADE_VEICULO = ("automotive", "in_vehicle", "driving")
+
+    def atividade_pessoa(self, pessoa):
+        """Estado do sensor de atividade do HA (derivado do acelerômetro).
+
+        Usa `atividade` da pessoa se informado; senão tenta `sensor.<base>_activity`
+        a partir do device_tracker. Devolve (estado, entidade) — estado "" se não
+        houver sensor.
+        """
+        ent = (pessoa.get("atividade") or "").strip()
+        base = (pessoa.get("entidade") or "").strip()
+        if not ent and base.startswith("device_tracker."):
+            ent = f"sensor.{base.split('.', 1)[1]}_activity"
+        if not ent:
+            return "", ""
+        st = ha.estado(ent) or {}
+        return str(st.get("state") or "").lower(), ent
+
     def limpar(self, pessoa, *tags):
         for tag in tags:
             self._notificar(pessoa, "", "clear_notification", {"tag": tag})
@@ -1802,11 +1820,14 @@ class Motor:
             if s_alvo is None or bus.get("s") is None:
                 continue
 
-            # --- detecta o embarque: pessoa junto do ônibus por um tempo, com ele
-            #     andando (parado no ponto o ônibus se afasta; a pé não acompanha) ---
+            # --- detecta o embarque: pessoa junto do ônibus, a >= 15 km/h, por um
+            #     tempo, e o sensor de atividade (acelerômetro) indicando veículo ---
+            ativ, _ent_ativ = self.atividade_pessoa(pessoa)
+            em_veiculo = ativ in self._ATIVIDADE_VEICULO
             junto = d_bus is not None and d_bus <= limiar_embarque
-            andando = bool(bus.get("em_movimento")) or (vel_p is not None and vel_p >= 10)
-            if junto and andando:
+            vel_ok = vel_p is not None and vel_p >= 15
+            ativ_ok = (not ativ) or em_veiculo
+            if junto and vel_ok and ativ_ok:
                 if not r.get("perto_desde"):
                     r["perto_desde"] = time.time()
                 elif time.time() - r["perto_desde"] >= 20:

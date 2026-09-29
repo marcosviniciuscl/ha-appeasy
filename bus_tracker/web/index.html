@@ -517,6 +517,9 @@
       </div>
       <label class="f">Localização (pessoa/rastreador do HA)</label>
       <input id="pe-entidade" list="dl-entidades" placeholder="digite para buscar…">
+      <label class="f">Sensor de atividade (opcional — acelerômetro)</label>
+      <input id="pe-atividade" placeholder="sensor.iphone_activity">
+      <p class="hint">Usado para confirmar o embarque (precisa indicar <b>automotive</b>/em veículo). Em branco, o app tenta <code>sensor.&lt;dispositivo&gt;_activity</code>.</p>
       <div class="row">
         <button class="bt" onclick="salvarPessoa()">Salvar pessoa</button>
         <button class="bt sec" onclick="novaPessoa()">Limpar</button>
@@ -1648,6 +1651,7 @@ function novaPessoa(){
   ["pe-nome"].forEach(i=>document.getElementById(i).value="");
   document.getElementById("pe-notify").value = "";
   document.getElementById("pe-entidade").value = "";
+  document.getElementById("pe-atividade").value = "";
 }
 function editarPessoa(id){
   const p = est.pessoas.find(x=>x.id===id); if(!p) return;
@@ -1656,6 +1660,7 @@ function editarPessoa(id){
   document.getElementById("pe-nome").value = p.nome;
   document.getElementById("pe-notify").value = p.notify||"";
   document.getElementById("pe-entidade").value = p.entidade||"";
+  document.getElementById("pe-atividade").value = p.atividade||"";
   document.getElementById("s-pessoas").scrollIntoView({behavior:"smooth"});
 }
 async function salvarPessoa(){
@@ -1664,6 +1669,7 @@ async function salvarPessoa(){
     nome: document.getElementById("pe-nome").value,
     notify: document.getElementById("pe-notify").value,
     entidade: document.getElementById("pe-entidade").value,
+    atividade: document.getElementById("pe-atividade").value,
     ativo: true
   };
   const r = await api("/api/pessoas", {pessoa});

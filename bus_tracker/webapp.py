@@ -534,6 +534,7 @@ class Handler(BaseHTTPRequestHandler):
             "ativo": bool(pessoa.get("ativo", True)),
             "notify": str(pessoa.get("notify") or "").strip(),
             "entidade": str(pessoa.get("entidade") or "").strip(),
+            "atividade": str(pessoa.get("atividade") or "").strip(),
         }
 
     def _limpa_trajeto(self, t):
