@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.510.0
+
+- **Ponto de embarque só aparece quando há ônibus**: no **mapa** e no painel
+  **Trajetos**, o ponto (com a caminhada) só é mostrado quando existe um ônibus
+  indo ao destino chegando — na cor do risco. **Sem ônibus**, não aparece ponto
+  nenhum: só o destino e a mensagem "sem ônibus indo ao destino agora".
+
 ## 0.509.0
 
 - **Corrigido o erro `KeyError: 'rota'`** em `avaliar_avisos`, que **derrubava o

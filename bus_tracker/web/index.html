@@ -1232,6 +1232,7 @@ async function carregarMapa(primeiro){
   const PONTO_M = 90;
   const noPontoIds = new Set();
   (d.trajetos||[]).forEach(t=>{
+    if (!t.bus_id) return;   // só marca "no ponto" quando há ônibus indo ao destino
     const lg = lugarPorId[t.pessoa_id];
     if (lg && t.ponto && distM([lg.lat, lg.lon], [t.ponto.lat, t.ponto.lon]) <= PONTO_M)
       noPontoIds.add(String(t.pessoa_id));
@@ -1250,42 +1251,24 @@ async function carregarMapa(primeiro){
       .bindPopup(popIco("ic-marker", "#f5a524", esc(p.nome),
         `Para ${esc(p.pessoa)} · linha ${esc(p.linha)} · ${fmtDist(p.dist_pessoa)}`)));
   });
-  // trajetos: caminhada (por ruas) até o ponto + ponto de embarque/desembarque
+  // trajetos: só mostra o ponto de embarque (e a caminhada) quando há ônibus
+  // indo ao destino; sem ônibus, fica só o destino.
   (d.trajetos||[]).forEach(t=>{
     const p = t.ponto;
-    const longe = !!t.longe;
-    const ativo = !!t.bus_id && !longe;
     const noPonto = noPontoIds.has(String(t.pessoa_id));
     const b0 = (t.onibus||[])[0];
-    const corAtivo = corRisco(b0 ? b0.risco : "");
-    const corPonto = longe ? "#8a94a6" : "#37b169";
-    const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
-      : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
-    if (caminho.length>1 && !noPonto){
-      // animação de deslocamento; no trajeto ativo a caminhada fica mais forte.
-      // No trajeto "longe" fica cinza e sem animação. Quem já está no ponto
-      // não tem animação de caminhada.
-      camadaOutros.addLayer(L.polyline(caminho, {color:corPonto, weight:ativo?5:4,
-        opacity:longe?.5:(ativo?.95:.8), className:longe?"":"caminhando"+(ativo?" caminhoAtivo":""),
-        interactive:false}));
-    }
-    if (p){
-      if (longe){
-        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#8a94a6", weight:2,
-          fillColor:"#8a94a6", fillOpacity:.3, bubblingMouseEvents:false})
-          .bindPopup(popIco("ic-marker", "#8a94a6", esc(p.nome),
-            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · LONGE (limite ${fmtDist(t.dist_max_m||0)})`)));
-      } else if (ativo){
-        // ponto de embarque do trajeto em andamento: borda piscando na cor do risco
-        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:corAtivo, weight:4,
-          fillColor:corAtivo, fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
-          .bindPopup(popIco("ic-marker", corAtivo, esc(p.nome),
-            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé${noPonto?" · você já está no ponto":""}`)));
-      } else {
-        camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:6, color:"#37b169", weight:2, fillColor:"#fff", fillOpacity:.9, bubblingMouseEvents:false})
-          .bindPopup(popIco("ic-marker", "#37b169", esc(p.nome),
-            `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé${noPonto?" · você já está no ponto":""}`)));
+    if (t.bus_id && p){
+      const corAtivo = corRisco(b0 ? b0.risco : "");
+      const caminho = (t.caminho && t.caminho.length>1) ? t.caminho
+        : ((t.pos && p) ? [[t.pos.lat,t.pos.lon],[p.lat,p.lon]] : []);
+      if (caminho.length>1 && !noPonto){
+        camadaOutros.addLayer(L.polyline(caminho, {color:"#37b169", weight:5,
+          opacity:.95, className:"caminhando caminhoAtivo", interactive:false}));
       }
+      camadaOutros.addLayer(L.circleMarker([p.lat,p.lon], {radius:9, color:corAtivo, weight:4,
+        fillColor:corAtivo, fillOpacity:.28, className:"pontoDestaque", bubblingMouseEvents:false})
+        .bindPopup(popIco("ic-marker", corAtivo, esc(p.nome),
+          `${esc(t.pessoa)} · ${fmtDist(p.dist_m)} · ~${Math.round(p.tempo_min)} min a pé${noPonto?" · você já está no ponto":""}`)));
     }
     if (t.destino && t.destino.lat != null && t.destino.lon != null){
       camadaOutros.addLayer(L.circleMarker([t.destino.lat,t.destino.lon], {radius:7, color:"#3d7dff", weight:3, fillColor:"#fff", fillOpacity:.95, bubblingMouseEvents:false})
@@ -1346,21 +1329,25 @@ async function carregarMapa(primeiro){
     }
     const fora = t.agora ? "" : " · fora do horário";
     const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
-    let status;
-    if (t.bus_id && b){
-      if ((t.tipo_horario||"ponto")==="chegar"){
-        const sair = b.sair_min;
-        const chega = b.chega_min!=null ? Math.round(b.chega_min) : null;
-        status = (sair!=null && sair<=0 ? "saia agora" : "saia em ~"+(sair!=null?Math.round(sair):"?")+" min") +
-                 (chega!=null ? " · chega ~"+chega+" min" : "") + " · "+risco;
-      } else {
-        status = "ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco;
-      }
-    } else {
-      status = "sem ônibus que atenda esse horário";
+    // sem ônibus indo ao destino agora: não mostra ponto nenhum
+    if (!t.bus_id || !b){
+      return `<div class="item"><div>
+        <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
+        <div class="meta">${esc(tipoTxt)}${fora}</div>
+        <div class="meta">sem ônibus indo ao destino agora</div>
+      </div></div>`;
     }
-    const riscoCls = t.bus_id && b ? (b.risco||"ok") : "";
-    return `<div class="item${riscoCls?" encontro risco-"+riscoCls:""}"><div>
+    let status;
+    if ((t.tipo_horario||"ponto")==="chegar"){
+      const sair = b.sair_min;
+      const chega = b.chega_min!=null ? Math.round(b.chega_min) : null;
+      status = (sair!=null && sair<=0 ? "saia agora" : "saia em ~"+(sair!=null?Math.round(sair):"?")+" min") +
+               (chega!=null ? " · chega ~"+chega+" min" : "") + " · "+risco;
+    } else {
+      status = "ônibus "+(b.eta_min!=null?"~"+Math.round(b.eta_min)+" min":"?")+" · "+risco;
+    }
+    const riscoCls = b.risco||"ok";
+    return `<div class="item encontro risco-${riscoCls}"><div>
       <div class="rot-ponto">ponto de encontro</div>
       <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
       <div class="meta">🚏 ${esc(t.ponto.nome)} · ${fmtDist(t.ponto.dist_m)} · ~${Math.round(t.ponto.tempo_min)} min a pé · ${esc(tipoTxt)}</div>
