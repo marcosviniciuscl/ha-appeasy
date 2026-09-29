@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.509.0
+
+- **Corrigido o erro `KeyError: 'rota'`** em `avaliar_avisos`, que **derrubava o
+  ciclo** de leitura (e com ele os trajetos/avisos paravam naquele ciclo). A rota
+  do veículo agora é obtida pelo itinerário dele.
+
 ## 0.508.0
 
 - **Sempre paradas oficiais**: o ponto de embarque passa a ser **só paradas de

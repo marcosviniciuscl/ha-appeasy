@@ -1320,13 +1320,18 @@ class Motor:
                 hist = b.get("historico") or []
                 avancando = True
                 if len(hist) >= 2:
-                    rota = b["rota"]
-                    s_ant = None
+                    rota = None
                     try:
-                        s_ant, _ = rota.projetar((hist[-2][1], hist[-2][2]))
+                        rota = api.rota_do_itinerario(b.get("cod_it"))
                     except Exception:
-                        s_ant = None
-                    if s_ant is not None:
+                        rota = None
+                    s_ant = None
+                    if rota:
+                        try:
+                            s_ant, _ = rota.projetar((hist[-2][1], hist[-2][2]))
+                        except Exception:
+                            s_ant = None
+                    if s_ant is not None and b.get("s") is not None:
                         avancando = (b["s"] - s_ant) > -20
                 if not avancando and b["dist_ponto"] > 400:
                     continue
