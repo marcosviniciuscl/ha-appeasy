@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.50.1
+
+- **Ônibus "perdeu" continua destacado, em vermelho**: quando nenhum ônibus do
+  trajeto dá mais tempo de você chegar no ponto, o app agora **mantém o próximo
+  destacado em vermelho** ("não dá mais") em vez de sumir com o destaque. Antes,
+  ao virar de "corra" (laranja) para "perdeu", o destaque desaparecia e não
+  aparecia mais nada.
+
 ## 0.50.0
 
 - **Campos de busca com lista própria**: os campos de digitar/escolher (pessoa,

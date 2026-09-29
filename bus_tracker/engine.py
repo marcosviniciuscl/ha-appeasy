@@ -1223,6 +1223,11 @@ class Motor:
         if escolhido and not longe:
             bus_id = escolhido["bus"]["id"]
             bus_ids = [bus_id]
+        elif not longe and principal["bus"].get("risco") == "perdeu":
+            # nenhum ônibus dá tempo: destaca mesmo assim (em vermelho) o mais
+            # próximo, para você ver que ele vai passar e que não dá mais
+            bus_id = principal["bus"]["id"]
+            bus_ids = [bus_id]
         info = montar(ponto, principal["linha"],
                       onibus, agora_bool, bus_id, bus_ids, longe)
         info["motivo"] = motivo
