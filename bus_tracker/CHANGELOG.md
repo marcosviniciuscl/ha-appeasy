@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.48.1
+
+- O indicador de **"no ponto"** agora é **estático** (verde, sem pulsar), para
+  não poluir o mapa. O balão do ponto continua mostrando "você já está no ponto"
+  e a animação de caminhada continua parando quando a pessoa chega.
+
 ## 0.48.0
 
 - **Localização com idade**: o app passa a mostrar **há quanto tempo o Home

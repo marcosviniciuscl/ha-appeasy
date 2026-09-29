@@ -192,11 +192,9 @@
   .personmark .l{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#12151a;color:#fff;
                  font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;white-space:nowrap;
                  border:1px solid rgba(255,255,255,.28)}
-  /* pessoa que já está no ponto de embarque */
-  .personmark.noPonto .p{background:#37b169;box-shadow:0 0 0 4px rgba(55,177,105,.30),0 3px 10px rgba(0,0,0,.5)}
+  /* pessoa que já está no ponto de embarque (sem animação, para não poluir) */
+  .personmark.noPonto .p{background:#37b169;box-shadow:0 0 0 3px rgba(55,177,105,.28),0 3px 10px rgba(0,0,0,.5)}
   .personmark.noPonto .l{background:#37b169;border-color:rgba(255,255,255,.5)}
-  .personmark.noPonto::after{content:"";position:absolute;left:-19px;top:-19px;width:38px;height:38px;
-                 border-radius:50%;border:3px solid #37b169;animation:anel 1.6s ease-out infinite;pointer-events:none}
 
   /* ---------- componentes modernos ---------- */
   input:focus,select:focus,textarea:focus{border-color:var(--acento);outline:none;
