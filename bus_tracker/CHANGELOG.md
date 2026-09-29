@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.511.0
+
+- **Cancelar a seleção no mapa**: ao usar **"Escolher no mapa"** (destino) ou
+  marcar a casa, aparece um **aviso no próprio mapa** com instruções e o botão
+  **Cancelar**. Antes as instruções iam para a aba Trajetos (invisível no mapa),
+  por isso parecia que nada acontecia.
+- **Cancelar edição do trajeto**: botão **"Cancelar edição"** no formulário
+  (aparece só quando você está editando).
+- **Otimização de requisições** (sem tirar nenhuma funcionalidade):
+  - **Paradas e traçados** ficam em cache por linha/destino (30 min) — não
+    refazem projeções nem chamadas de API a cada atualização; só a **posição
+    atual dos ônibus** continua sendo buscada a cada ciclo.
+  - **Rota a pé** (OSRM) com cache em ~11 m de precisão, para aproveitar melhor
+    o cache enquanto a pessoa anda.
+  - **Estado das entidades do HA** (posição da pessoa etc.) com cache de 10 s.
+  - Resultado: a segunda avaliação do mesmo trajeto caiu de ~5 s para ~0 s.
+
 ## 0.510.0
 
 - **Ponto de embarque só aparece quando há ônibus**: no **mapa** e no painel

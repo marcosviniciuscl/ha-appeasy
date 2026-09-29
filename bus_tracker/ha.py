@@ -75,14 +75,34 @@ def estados():
     return r.json()
 
 
-def estado(entity_id):
+_estado_cache = {}
+_estado_lock = threading.Lock()
+ESTADO_TTL = 10
+
+
+def estado(entity_id, ttl=ESTADO_TTL):
+    """Estado de uma entidade do HA (com cache curto de 10 s).
+
+    A posição das pessoas não muda tanto assim; evita bater no HA a cada trajeto.
+    """
+    agora = time.time()
+    with _estado_lock:
+        c = _estado_cache.get(entity_id)
+    if c and (agora - c[0]) < ttl:
+        return c[1]
+    st = None
     try:
         r = requests.get(_url(f"/states/{entity_id}"), headers=_headers(), timeout=10)
         if r.status_code == 200:
-            return r.json()
+            st = r.json()
     except Exception as e:
         log.debug(f"estado {entity_id}: {e}")
-    return None
+    with _estado_lock:
+        _estado_cache[entity_id] = (agora, st)
+        if len(_estado_cache) > 500:
+            for k in sorted(_estado_cache, key=lambda k: _estado_cache[k][0])[:100]:
+                _estado_cache.pop(k, None)
+    return st
 
 
 def definir_estado(entity_id, state, attributes=None):

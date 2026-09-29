@@ -39,7 +39,8 @@ def _perfil():
 
 
 def _chave(a, b):
-    return (round(a[0], 5), round(a[1], 5), round(b[0], 5), round(b[1], 5))
+    # ~11 m de precisão: aumenta muito o acerto do cache enquanto a pessoa anda
+    return (round(a[0], 4), round(a[1], 4), round(b[0], 5), round(b[1], 5))
 
 
 def _osrm(origem, destino):

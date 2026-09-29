@@ -100,6 +100,7 @@ class Motor:
         self._cache_destino = {}  # (lat,lon) -> (ts, [siglas]) linhas que atendem o destino
         self._trajeto_log = {}    # trajeto_id -> assinatura do último log (evita repetir)
         self._aviso_gps = {}      # pessoa_id -> ts do último aviso de GPS parado
+        self._cand_cache = {}     # (sigla, lat4, lon4) -> paradas/itinerários do destino
 
     # ------------------------------------------------------------------ log
     def registrar(self, msg, nivel="info"):
@@ -872,32 +873,50 @@ class Motor:
         Só usa paradas de verdade (onde o ônibus para). Devolve
         (validas, ordenadas) — `ordenadas` por distância em linha reta; cada item
         tem 'parada', 'dist', 'its' (s por itinerário) e 'oficial'.
+
+        As paradas e o traçado (que **não mudam com frequência**) ficam em cache
+        por destino; só a distância até a pessoa é recalculada a cada chamada.
         """
-        validas = {}
-        for cod_it, _ in self.itinerarios.get(norm_sigla(sigla), {}).get("its", [])[:8]:
-            try:
-                rota = api.rota_do_itinerario(cod_it)
-                paradas = api.paradas_do_itinerario(cod_it)
-            except Exception:
-                continue
-            if not rota or not paradas:
-                continue
-            s_dest, off_dest = rota.projetar(destino)
-            if s_dest is None or off_dest > 2000:
-                continue  # esta direção não passa no destino
-            for p in paradas:
-                if p.get("lat") is None or p.get("lon") is None:
+        chave = (norm_sigla(sigla), round(float(destino[0]), 4), round(float(destino[1]), 4))
+        its_atuais = tuple(c for c, _ in self.itinerarios.get(chave[0], {}).get("its", [])[:8])
+        agora = time.time()
+        base = self._cand_cache.get(chave)
+        if not base or (agora - base["ts"]) > 1800 or base["cod_its"] != its_atuais:
+            paradas = []
+            for cod_it in its_atuais:
+                try:
+                    rota = api.rota_do_itinerario(cod_it)
+                    lista = api.paradas_do_itinerario(cod_it)
+                except Exception:
                     continue
-                s_p, _ = rota.projetar((p["lat"], p["lon"]))
-                if s_p is None or s_p > s_dest + 50:
-                    continue  # parada depois do destino: sentido errado
-                chave = p.get("cod") or (round(p["lat"], 5), round(p["lon"], 5))
-                e = validas.get(chave)
-                if not e:
-                    e = {"parada": p, "dist": geo.haversine(ref, (p["lat"], p["lon"])),
-                         "its": {}, "oficial": True}
-                    validas[chave] = e
-                e["its"][cod_it] = (s_p, s_dest, rota)
+                if not rota or not lista:
+                    continue
+                s_dest, off_dest = rota.projetar(destino)
+                if s_dest is None or off_dest > 2000:
+                    continue  # esta direção não passa no destino
+                for p in lista:
+                    if p.get("lat") is None or p.get("lon") is None:
+                        continue
+                    s_p, _ = rota.projetar((p["lat"], p["lon"]))
+                    if s_p is None or s_p > s_dest + 50:
+                        continue  # parada depois do destino: sentido errado
+                    paradas.append((p, cod_it, s_p, s_dest, rota))
+            base = {"ts": agora, "cod_its": its_atuais, "paradas": paradas}
+            self._cand_cache[chave] = base
+            if len(self._cand_cache) > 80:   # limpeza simples
+                for k in sorted(self._cand_cache, key=lambda k: self._cand_cache[k]["ts"])[:20]:
+                    self._cand_cache.pop(k, None)
+
+        # monta os candidatos com a distância para a posição ATUAL da pessoa
+        validas = {}
+        for p, cod_it, s_p, s_dest, rota in base["paradas"]:
+            k = p.get("cod") or (round(p["lat"], 5), round(p["lon"], 5))
+            e = validas.get(k)
+            if not e:
+                e = {"parada": p, "dist": geo.haversine(ref, (p["lat"], p["lon"])),
+                     "its": {}, "oficial": True}
+                validas[k] = e
+            e["its"][cod_it] = (s_p, s_dest, rota)
         return validas, sorted(validas.values(), key=lambda e: e["dist"])
 
     def _embarque_destino(self, sigla, destino, ref, t=None, ponto_fixo=None):

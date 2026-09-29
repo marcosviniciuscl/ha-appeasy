@@ -71,6 +71,11 @@
   .map-controls{position:absolute;z-index:22;right:12px;
                 top:calc(var(--hdr) + env(safe-area-inset-top) + 46px);
                 display:grid;grid-template-columns:40px;gap:8px;justify-items:center}
+  .modo-banner{position:absolute;z-index:30;left:12px;right:12px;
+        top:calc(var(--hdr) + env(safe-area-inset-top) + 4px);display:flex;align-items:center;gap:10px;
+        padding:9px 10px 9px 12px;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.4)}
+  .modo-banner span{flex:1;font-size:13px;color:var(--txt)}
+  .modo-banner button{flex:0 0 auto}
 
   /* ---------- botões flutuantes / pills ---------- */
   .fab{width:40px;height:40px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;cursor:pointer;
@@ -407,6 +412,10 @@
     <button class="fab glass" onclick="zoomIn()" title="Aproximar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-plus"/></svg></button>
     <button class="fab glass" onclick="zoomOut()" title="Afastar"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-minus"/></svg></button>
   </div>
+  <div id="mapa-modo" class="modo-banner glass" style="display:none">
+    <span id="mapa-modo-txt"></span>
+    <button class="bt sec sm" type="button" onclick="cancelarModoMapa()">Cancelar</button>
+  </div>
   <aside class="detail glass" id="rota-info" style="display:none"></aside>
   <aside class="detail glass" id="trajetos-sheet" style="display:none">
     <div class="grab" aria-hidden="true"></div>
@@ -497,6 +506,7 @@
       <div class="row">
         <button class="bt" onclick="salvarTrajeto()">Salvar trajeto</button>
         <button class="bt sec" onclick="novoTrajeto()">Limpar</button>
+        <button class="bt sec" id="tr-cancelar" onclick="cancelarEdicaoTrajeto()" style="display:none">Cancelar edição</button>
         <button class="bt sec" onclick="testarTrajeto()">Testar aviso</button>
       </div>
       <div class="aviso" id="tr-msg"></div>
@@ -645,7 +655,7 @@ function trocarAba(t){
   if (t==="mapa"){ secMapa.classList.add("on"); setTimeout(()=>mapa && mapa.invalidateSize(), 80); }
   else {
     secMapa.classList.remove("on");   // no desktop o CSS mantém o mapa visível
-    if (marcandoDestino){ marcandoDestino = false; if (destinoPickLayer) destinoPickLayer.clearLayers(); }
+    if (marcandoDestino || marcandoCasa) cancelarModoMapa();
   }
   if (t==="onibus") carregarOnibus();
 }
@@ -815,7 +825,7 @@ async function salvarCasa(){
 function marcarCasa(){
   marcandoCasa = true;
   trocarAba("mapa");
-  msg("casa-msg","Toque no mapa para marcar a casa.");
+  mostrarModoMapa("Toque no mapa para marcar a casa. Depois clique em Salvar casa.");
 }
 
 /* ------------------------------------------------ trajetos (cadastro) */
@@ -933,6 +943,8 @@ function renderTipoHorario(){
 }
 function novoTrajeto(){
   editandoTrajeto = null;
+  const br = document.getElementById("tr-cancelar");
+  if (br) br.style.display = "none";
   document.getElementById("tr-titulo").textContent = "Novo trajeto";
   document.getElementById("tr-pessoa").value = "";
   document.getElementById("tr-linha").value = "";
@@ -952,9 +964,16 @@ function novoTrajeto(){
   renderTipoHorario();
   renderDiasTrajeto([0,1,2,3,4]);
 }
+function cancelarEdicaoTrajeto(){
+  const eraEdicao = !!editandoTrajeto;
+  novoTrajeto();
+  msg("tr-msg", eraEdicao ? "Edição cancelada." : "Formulário limpo.");
+}
 function editarTrajeto(id){
   const t = (est.trajetos||[]).find(x=>x.id===id); if(!t) return;
   editandoTrajeto = id;
+  const br = document.getElementById("tr-cancelar");
+  if (br) br.style.display = "";
   const linhas = (t.linhas && t.linhas.length) ? t.linhas : (t.linha ? [t.linha] : []);
   document.getElementById("tr-titulo").textContent = "Editando trajeto · "+(linhas.join(", ")||"todas do destino");
   document.getElementById("tr-pessoa").value = (est.pessoas.find(x=>x.id===t.pessoa)||{}).nome || t.pessoa || "";
@@ -1063,6 +1082,22 @@ function raioDestino(){
   const r = +(est.ajustes && est.ajustes.raio_destino_m);
   return r > 0 ? r : 3000;
 }
+function mostrarModoMapa(txt){
+  const el = document.getElementById("mapa-modo");
+  const t = document.getElementById("mapa-modo-txt");
+  if (t) t.textContent = txt || "";
+  if (el) el.style.display = "flex";
+}
+function esconderModoMapa(){
+  const el = document.getElementById("mapa-modo");
+  if (el) el.style.display = "none";
+}
+function cancelarModoMapa(){
+  marcandoDestino = false;
+  marcandoCasa = false;
+  if (destinoPickLayer) destinoPickLayer.clearLayers();
+  esconderModoMapa();
+}
 function marcarDestino(){
   marcandoDestino = true;
   destinoEscolhido = null;
@@ -1070,8 +1105,7 @@ function marcarDestino(){
   destinosPick = destinosLinha.filter(p=>p.lat != null);
   trocarAba("mapa");
   desenharDestinosPick();
-  msg("tr-msg", "Toque no mapa para carregar os pontos num raio de " + raioDestino() +
-      " m e depois toque no ponto de destino.");
+  mostrarModoMapa("Toque num ponto para escolher o destino. Se não aparecer nenhum, toque no mapa para buscar paradas por perto.");
   // já busca os pontos ao redor da área visível, para não ficar vazio
   if (mapa) carregarPontosProximos(mapa.getCenter());
 }
@@ -1096,22 +1130,23 @@ function escolherDestinoPonto(p){
   document.getElementById("tr-destino").value = p.nome;
   marcandoDestino = false;
   if (destinoPickLayer) destinoPickLayer.clearLayers();
+  esconderModoMapa();
   trocarAba("trajetos");
   msg("tr-msg", "Destino: " + p.nome + " — agora salve o trajeto.");
 }
 async function carregarPontosProximos(latlng){
   const raio = raioDestino();
-  msg("tr-msg", "Buscando pontos num raio de " + raio + " m…");
+  mostrarModoMapa("Buscando paradas num raio de " + raio + " m…");
   try {
     const r = await api("/api/paradas_proximas?lat="+latlng.lat+"&lon="+latlng.lng+"&raio="+raio);
     if (!r || !r.ok || !marcandoDestino) return;
     destinosPick = (r.paradas||[]).filter(p=>p.lat != null);
     desenharDestinosPick();
-    msg("tr-msg", destinosPick.length
-      ? (destinosPick.length + " ponto(s) encontrados — toque no desejado.")
-      : "Nenhum ponto nesse raio. Tente tocar em outro lugar.", destinosPick.length > 0);
+    mostrarModoMapa(destinosPick.length
+      ? (destinosPick.length + " parada(s) — toque na desejada para escolher o destino.")
+      : "Nenhuma parada nesse raio. Toque em outro lugar do mapa.");
   } catch(e){
-    msg("tr-msg", "Não deu para buscar os pontos agora.", false);
+    mostrarModoMapa("Não deu para buscar as paradas agora. Toque no mapa para tentar de novo.");
   }
 }
 function fecharModais(){
@@ -1143,6 +1178,7 @@ function aoClicarMapa(e){
     document.getElementById("casa-lat").value = e.latlng.lat.toFixed(6);
     document.getElementById("casa-lon").value = e.latlng.lng.toFixed(6);
     marcandoCasa = false;
+    esconderModoMapa();
     msg("casa-msg", "Posição marcada. Clique em Salvar casa.");
     return;
   }
