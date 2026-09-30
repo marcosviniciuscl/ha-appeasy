@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.512.0
+
+- **Embarque detectado mesmo sem ônibus no momento**: antes a detecção só rodava
+  se já houvesse um **rastreio ativo** (um ônibus candidato antes de você
+  embarcar). Agora, quando a **pessoa passa a se mover como veículo** (≥ 15 km/h,
+  ou ≥ 8 km/h com o sensor de atividade indicando veículo) **e está perto do
+  traçado das linhas do trajeto**, o app marca **"a bordo"** — mesmo sem ter
+  visto o ônibus. Quando um veículo da linha aparece perto, ele é associado
+  automaticamente.
+- O modo **"a bordo"** funciona mesmo sem saber o veículo: mostra o aviso ao
+  vivo e segue até o destino.
+
 ## 0.511.0
 
 - **Cancelar a seleção no mapa**: ao usar **"Escolher no mapa"** (destino) ou
