@@ -975,7 +975,7 @@ class Motor:
         # escolhe a parada mais próxima pela caminhada REAL (a pé). Em linha reta
         # duas paradas podem parecer equivalentes, mas uma exigir atravessar a
         # avenida; consulta o roteador para as até 6 mais próximas em linha reta.
-        perto = [c for c in ordenadas if c["dist"] - ordenadas[0]["dist"] <= 500][:6]
+        perto = [c for c in ordenadas if c["dist"] - ordenadas[0]["dist"] <= 500][:6] or ordenadas[:1]
         if ref and len(perto) > 1:
             for c in perto:
                 try:
@@ -983,15 +983,24 @@ class Motor:
                     c["dist_pe"] = info["dist_m"] if info else c["dist"]
                 except Exception:
                     c["dist_pe"] = c["dist"]
-            e = min(perto, key=lambda x: x.get("dist_pe", x["dist"]))
-        else:
-            e = ordenadas[0]
+        perto.sort(key=lambda x: x.get("dist_pe", x["dist"]))
         _pe = lambda c: c.get("dist_pe", c["dist"])
+        # PREFERE a parada mais próxima (a pé) que tenha ônibus indo ao destino —
+        # senão o ponto não bate com o ônibus que aparece no mapa (e ele não é
+        # destacado). Se nenhuma tiver, usa a mais próxima mesmo.
+        escolhida, cands = perto[0], None
+        for c in perto:
+            cs = cands_da(c)
+            if cs:
+                escolhida, cands = c, cs
+                break
+        if cands is None:
+            cands = cands_da(escolhida)
         if t is not None:
             amostra = ", ".join(f"{c['parada']['nome'][:26]} {round(_pe(c))}m"
                                 for c in ordenadas[:4])
             self._diag(t, f"linha {self.sigla_exib(sigla)}: paradas: {amostra}")
-        return e["parada"], cands_da(e)
+        return escolhida["parada"], cands
 
     def candidatos_embarque(self, t):
         """Pontos de embarque possíveis do trajeto, para o usuário escolher.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.513.0
+
+- **O ponto bate com o ônibus que aparece**: entre as paradas próximas, o app
+  agora prefere a **mais próxima (a pé) que tenha um ônibus indo ao destino**.
+  Antes ele podia escolher a parada mais próxima "no papel" — que aquele ônibus
+  não atende — e então o ônibus **aparecia no mapa sem destaque**. Se nenhuma
+  parada próxima tiver ônibus, continua usando a mais próxima.
+
 ## 0.512.0
 
 - **Embarque detectado mesmo sem ônibus no momento**: antes a detecção só rodava
