@@ -332,6 +332,10 @@ class Handler(BaseHTTPRequestHandler):
             for chave in ("rotas", "pontos"):
                 if chave in corpo:
                     mapa[chave] = bool(corpo[chave])
+            if "rotas_modo" in corpo:
+                modo = str(corpo.get("rotas_modo") or "").strip().lower()
+                if modo in ("sistema", "real", "ambas"):
+                    mapa["rotas_modo"] = modo
             motor.salvar(cfg)
             return self._json({"ok": True, "mapa": mapa})
 
@@ -581,6 +585,7 @@ class Handler(BaseHTTPRequestHandler):
             "ponto": self._ponto_embarque(t.get("ponto")),
             "dias": sorted(set(dias)) if dias else list(range(7)),
             "horarios": sorted(set(horarios)),
+            "limite": self._hora(t.get("limite"), ""),
         }
 
     def _ponto_embarque(self, p):

@@ -81,6 +81,30 @@ embarque** ficam destacados na cor do risco, a **rota** aparece e o **caminho
 até o ponto** ganha animação de deslocamento. Quando a pessoa **chega ao ponto**,
 a animação de caminhada para e ela é marcada em **verde com "no ponto"**.
 
+## Rotas: sistema × real
+
+Além do **traçado oficial** do sistema, o app **aprende a rota real** — o
+caminho que os motoristas de fato percorrem — gravando as posições dos ônibus
+ao longo do tempo. Em **Ônibus → Rotas no mapa** você escolhe:
+
+| Opção | O que mostra |
+| --- | --- |
+| **Sistema** | só o traçado oficial (linha laranja pontilhada) |
+| **Real** | só a rota mais percorrida, aprendida (linha roxa) |
+| **Ambas** | as duas juntas, para comparar |
+
+Assim fica fácil ver quando um motorista desvia do trajeto registrado. O
+aprendizado pode ser desligado em **Ajustes** (*Aprender a rota real*).
+
+## Chegada ao destino
+
+Quando você está **a bordo** e chega a `raio_chegada_destino_m` (padrão 200 m,
+ajustável em **Ajustes**) do ponto de destino, o app avisa **“Chegou!”** e
+**encerra o rastreio e a rota** do trajeto — a decisão usa a **sua** posição, e
+não só a do ônibus. Cada trajeto pode ter ainda uma **hora limite** (opcional)
+para o aviso “sair agora” parar de ser enviado depois de certo horário, e o
+aviso não é disparado se você já estiver no destino.
+
 ## Cidades
 
 Você escolhe a cidade **dentro do painel**, na aba **Ônibus → Cidade**. A lista

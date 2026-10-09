@@ -26,6 +26,7 @@ log = logging.getLogger("bus_tracker")
 import store
 from engine import Motor
 import ha
+import percurso
 import rotas
 import siumobile as api
 import webapp
@@ -72,6 +73,7 @@ def laco_rastreio(motor):
 
 def main():
     cfg = store.carregar()
+    percurso.carregar()
     opcoes = opcoes_app()
 
     salva = cfg.get("cidade") if isinstance(cfg.get("cidade"), dict) else None
@@ -118,6 +120,10 @@ def main():
 
     def desligar(*_):
         log.info("encerrando…")
+        try:
+            percurso.salvar(force=True)
+        except Exception:
+            pass
         try:
             httpd.shutdown()
         except Exception:

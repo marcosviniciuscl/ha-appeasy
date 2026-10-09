@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import geo
 import ha
+import percurso
 import rotas as rotas_ruas
 import siumobile as api
 from siumobile import norm_sigla
@@ -102,6 +103,7 @@ class Motor:
         self._aviso_gps = {}      # pessoa_id -> ts do último aviso de GPS parado
         self._cand_cache = {}     # (sigla, lat4, lon4) -> paradas/itinerários do destino
         self._hist_pessoa = {}    # trajeto_id -> [(ts, lat, lon)] p/ velocidade
+        self._perc_ult = {}       # veículo -> (ts, lat, lon) do último ponto gravado
 
     # ------------------------------------------------------------------ log
     def registrar(self, msg, nivel="info"):
@@ -256,12 +258,15 @@ class Motor:
                 else:
                     novo["comprimento_rota"] = antigo.get("comprimento_rota") if antigo else None
                 self.onibus[vid] = novo
+                if rota and self.cfg["ajustes"].get("aprender_percurso", True):
+                    self._registrar_percurso(vid, sigla, cod_it, lat, lon)
                 if novo["primeira_vez"]:
                     novos += 1
 
             sumidos = [vid for vid in list(self.onibus) if vid not in vistos]
             for vid in sumidos:
                 del self.onibus[vid]
+                self._perc_ult.pop(vid, None)
                 for chave in [k for k in self.avisos if k[2] == vid]:
                     self.avisos.pop(chave, None)
 
@@ -271,6 +276,21 @@ class Motor:
         self.erro_ciclo = ""
         if novos or sumidos:
             self.registrar(f"{len(vistos)} ônibus no mapa ({novos} novo(s), {len(sumidos)} saiu/saíram)")
+
+    def _registrar_percurso(self, vid, sigla, cod_it, lat, lon):
+        """Grava a trilha real do ônibus (com folga de tempo/distância)."""
+        agora = time.time()
+        ant = self._perc_ult.get(vid)
+        if ant:
+            if (agora - ant[0]) < 15:
+                return
+            if geo.haversine((lat, lon), (ant[1], ant[2])) < 12:
+                return
+        self._perc_ult[vid] = (agora, lat, lon)
+        try:
+            percurso.registrar(sigla, cod_it, lat, lon)
+        except Exception as e:
+            log.debug(f"percurso real ({sigla}): {e}")
 
     def linhas_observadas(self):
         siglas = set()
@@ -402,6 +422,8 @@ class Motor:
             self.itinerarios.clear()
             self.ultimo_ciclo = 0.0
             self.erro_ciclo = ""
+            self._perc_ult.clear()
+        percurso.limpar_cache()
         for vid in antigos:
             try:
                 ha.remover_estado(f"device_tracker.bustracker_{vid}")
@@ -710,6 +732,21 @@ class Motor:
                     for p in (rota.ponto_em(ini + i * passo) for i in range(n + 1))]
         except Exception:
             return []
+
+    def _dist_destino(self, pessoa, destino):
+        """Distância da pessoa ao ponto de destino (m) ou None se não der."""
+        if not pessoa or not destino:
+            return None
+        lat, lon = destino.get("lat"), destino.get("lon")
+        if lat is None or lon is None:
+            return None
+        pos = self.posicao(pessoa.get("entidade"))
+        if not pos:
+            return None
+        try:
+            return geo.haversine(pos, (float(lat), float(lon)))
+        except (TypeError, ValueError):
+            return None
 
     # -------------------------------------------------------------- avaliação
     def dentro_da_janela(self, regra, agora=None):
@@ -1143,6 +1180,14 @@ class Motor:
         elif t.get("destino"):
             self._diag(t, f"destino '{t.get('destino')}' sem coordenadas — não dá para checar a direção")
 
+        # já chegou perto do destino: finaliza a viagem (sem destaque de rota/ônibus)
+        raio_chegada = float(self.cfg["ajustes"].get("raio_chegada_destino_m", 200) or 0)
+        d_dest = self._dist_destino(pessoa, destino)
+        chegou = bool(d_dest is not None and raio_chegada > 0 and d_dest <= raio_chegada)
+        if chegou:
+            self._diag(t, f"já está a {_fmt_dist(d_dest)} do destino "
+                          f"(limite {_fmt_dist(raio_chegada)}) — viagem finalizada")
+
         # ponto de embarque é o MESMO para todos os ônibus da linha (estável)
         coletados = []
         pontos_linha = []   # pontos válidos mesmo quando não há ônibus indo ao destino
@@ -1198,6 +1243,9 @@ class Motor:
                     },
                 })
         def montar(ponto, linha_principal, onibus, agora_bool, bus_id, bus_ids, longe):
+            if chegou:
+                # viagem finalizada: não destaca ônibus nem rota
+                bus_id, bus_ids = None, []
             return {
                 "id": t.get("id"), "pessoa": pessoa["nome"], "pessoa_id": pessoa["id"],
                 "linhas": [self.sigla_exib(s) for s in linhas],
@@ -1208,6 +1256,8 @@ class Motor:
                        else {"lat": ponto["lat"], "lon": ponto["lon"]},
                 "destino": destino,
                 "agora": agora_bool, "longe": longe, "dist_max_m": limite,
+                "chegou": chegou,
+                "dist_destino_m": round(d_dest) if d_dest is not None else None,
                 "bus_id": bus_id, "bus_ids": bus_ids,
                 "ponto": {k: ponto[k] for k in ("nome", "lat", "lon", "dist_m", "tempo_min")},
                 "caminho": ponto["caminho"], "fonte": ponto["fonte"],
@@ -1394,6 +1444,19 @@ class Motor:
                 melhor = (dt, diff)
         return melhor
 
+    def _dentro_limite(self, t, agora=None):
+        """False quando o trajeto já passou da hora-limite configurada.
+
+        A hora-limite serve para o aviso de "sair agora" parar de incomodar
+        depois de certo horário (ex.: não adianta avisar às 09h de um ônibus de
+        06h). Vazio = sem limite.
+        """
+        lim = _hhmm(t.get("limite"))
+        if lim is None:
+            return True
+        agora = agora or datetime.now(_tz(self.cfg["ajustes"]["fuso"]))
+        return (agora.hour * 60 + agora.minute) <= lim
+
     def avaliar_trajetos(self):
         """Avisa quando o ônibus do trajeto está chegando e mantém o rastreio
         automático até ele passar pelo ponto.
@@ -1411,6 +1474,11 @@ class Motor:
             chave = str(t.get("id"))
             if (self.rastreios.get(chave) or {}).get("a_bordo"):
                 continue   # já está no ônibus: quem cuida é o tick do rastreio
+            if not self._dentro_limite(t):
+                # passou da hora-limite do trajeto: não avisa mais hoje
+                if chave in self.rastreios:
+                    self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
+                continue
 
             # detecta embarque pelo MOVIMENTO da pessoa, mesmo sem haver ônibus
             # candidato no momento (foi o caso de embarcar e o app não achar)
@@ -1445,6 +1513,11 @@ class Motor:
                 if chave in self.rastreios:
                     self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
                 continue
+            if info.get("chegou"):
+                # já chegou ao destino: finaliza rastreio/rota e não avisa saída
+                if chave in self.rastreios:
+                    self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
+                continue
             # ônibus do trajeto: o escolhido pelo horário ou, fora da janela, o
             # próximo que vai ao destino e já está perto do ponto
             bus = None
@@ -1462,7 +1535,7 @@ class Motor:
                     self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
                 continue
             # aviso para sair quando o ônibus está em cima (ou já não dá tempo)
-            if bus.get("risco") in ("correr", "perdeu"):
+            if bus.get("risco") in ("correr", "perdeu") and not info.get("chegou"):
                 aviso_chave = (t.get("id"), bus["id"], "saida")
                 if time.time() - self.avisos.get(aviso_chave, 0) >= cooldown:
                     self.avisos[aviso_chave] = time.time()
@@ -1888,7 +1961,7 @@ class Motor:
                                 self.rastreios[chave]["bus_id"] = bus["id"]
                 d_bus = geo.haversine(pos_p, (bus["lat"], bus["lon"])) \
                     if (pos_p and bus and bus.get("lat") is not None) else None
-                self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia)
+                self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia, pos_p, vel_p)
                 continue
 
             if not bus or (time.time() - bus.get("ts", 0)) > 300:
@@ -1937,7 +2010,7 @@ class Motor:
                     r["ultimo_push_bordo"] = 0
                     self.registrar(f"{pessoa['nome']} embarcou na linha {r['linha']} (veículo {bus['id']})")
                     self.limpar(pessoa, f"onibus_chegou_{chave}", f"onibus_rastreio_{chave}")
-                    self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia)
+                    self._tick_a_bordo(pessoa, r, bus, rota, d_bus, cadencia, pos_p, vel_p)
                     continue
             else:
                 r["perto_desde"] = 0.0
@@ -1961,14 +2034,41 @@ class Motor:
                 if not r.get("d0"):
                     r["d0"] = max(dr, 0.0)
 
-    def _tick_a_bordo(self, pessoa, r, bus, rota, d_bus, cadencia):
-        """Enquanto está a bordo: mostra a chegada ao destino e avisa quando chega."""
+    def _tick_a_bordo(self, pessoa, r, bus, rota, d_bus, cadencia, pos_p=None, vel_p=None):
+        """Enquanto está a bordo: mostra a chegada ao destino e avisa quando chega.
+
+        O "chegou" usa a posição da PESSOA (não a do ônibus, que pode ter
+        desviado do traçado): só finaliza quando ela estava longe do destino no
+        início do rastreio e agora está dentro do raio, sem estar se afastando —
+        assim não dispara quando você está saindo de perto do destino.
+        """
         chave = r.get("chave") or pessoa["id"]
-        # afastou-se muito do veículo: provavelmente desceu
-        if d_bus is not None and d_bus > 400:
+        # afastou-se muito do veículo e já não anda como veículo: provavelmente desceu
+        if d_bus is not None and d_bus > 800 and (vel_p is None or vel_p < 12):
             self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
             return
         dest = r.get("destino")
+        # chegou perto do destino: finaliza a viagem (avisa e para rastreio/rota)
+        raio = float(self.cfg["ajustes"].get("raio_chegada_destino_m", 200) or 0)
+        if pos_p and dest and raio > 0:
+            try:
+                d_dest = geo.haversine(pos_p, (dest[0], dest[1]))
+            except (TypeError, ValueError, IndexError):
+                d_dest = None
+            if d_dest is not None:
+                d0 = r.get("dest_0")
+                if d0 is None:
+                    d0 = r["dest_0"] = d_dest
+                menor = r.get("dest_menor")
+                if menor is None or d_dest < menor:
+                    menor = r["dest_menor"] = d_dest
+                if d0 > raio * 1.5 and menor <= raio and d_dest <= menor + 80:
+                    self.registrar(f"{pessoa['nome']} chegou ao destino "
+                                   f"({_fmt_dist(d_dest)} de "
+                                   f"{r.get('destino_nome') or 'destino'})")
+                    self.push_destino(pessoa, r, bus)
+                    self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
+                    return
         s_dest = None
         if bus and rota and dest:
             s_dest, _ = rota.projetar(dest)
@@ -1981,10 +2081,6 @@ class Motor:
         restante = max(0.0, s_dest - bus["s"])
         vel = max(bus.get("vel_kmh") or 0.0, float(self.cfg["ajustes"].get("velocidade_min_kmh", 12)))
         eta = (restante / 1000) / vel * 60
-        if restante <= CHEGADA_M:
-            self.push_destino(pessoa, r, bus)
-            self.parar_rastreio(chave, aviso=False, limpar_chegou=False)
-            return
         if time.time() - ultimo >= cadencia or not ultimo:
             self.push_a_bordo(pessoa, r, bus, eta, restante, primeiro=not ultimo)
             r["ultimo_push_bordo"] = time.time()
@@ -2027,6 +2123,34 @@ class Motor:
                     continue
                 passo = max(1, len(rota.pts) // max_pts)
                 linhas.append([[round(p[0], 5), round(p[1], 5)] for p in rota.pts[::passo]])
+            if linhas:
+                saida[sigla] = linhas
+        return saida
+
+    def percursos_render(self):
+        """Percurso REAL (mais percorrido) por linha — o caminho que os ônibus
+        de fato fazem, reconstruído a partir das posições observadas."""
+        modo = str(self.cfg.get("mapa", {}).get("rotas_modo", "ambas"))
+        if modo == "sistema":
+            return {}
+        saida = {}
+        for sigla in self.linhas_observadas():
+            its = self.itinerarios.get(norm_sigla(sigla), {}).get("its", [])
+            linhas = []
+            for cod_it, _ in its[:6]:
+                try:
+                    rota = api.rota_do_itinerario(cod_it)
+                except Exception:
+                    rota = None
+                info = percurso.percurso_real(rota, sigla, cod_it) if rota else None
+                if info:
+                    pts = info["pontos"]
+                    passo = max(1, len(pts) // 500)
+                    if passo > 1:
+                        pts = pts[::passo]
+                    linhas.append({"cod_it": cod_it, "pontos": pts,
+                                   "amostras": info["amostras"],
+                                   "desvio_max_m": info["desvio_max_m"]})
             if linhas:
                 saida[sigla] = linhas
         return saida
@@ -2106,6 +2230,7 @@ class Motor:
             "casa": (lambda p, c: {"lat": p[0], "lon": p[1], "raio": c.get("raio", 150)}
                      if p else None)(self.posicao_casa(), self.cfg.get("casa") or {}),
             "rotas": self.rotas_render() if (com_rotas and mapa.get("rotas")) else {},
+            "percursos": self.percursos_render() if com_rotas else {},
             "rastreios": rastreios,
             "log": list(self.log)[:60],
             "avisos_recentes": [

@@ -32,13 +32,16 @@ def _padroes():
             # trajeto sem linha: "monitoradas" = linhas já monitoradas no app;
             # "cidade" = descobre linhas da cidade que atendem o destino
             "trajetos_sem_linha": "monitoradas",
+            "raio_chegada_destino_m": 200,  # finaliza a viagem ao chegar perto do destino
+            "aprender_percurso": True,      # aprende o percurso real dos ônibus
         },
         "cidade": {},
         "casa": {"entidade": "zone.home", "lat": None, "lon": None, "raio": 150},
         "pessoas": [],
         "regras": [],
         "trajetos": [],
-        "mapa": {"onibus": [], "pessoas": [], "rotas": True, "pontos": True},
+        "mapa": {"onibus": [], "pessoas": [], "rotas": True, "pontos": True,
+                 "rotas_modo": "ambas"},
         "historico": [],
     }
 

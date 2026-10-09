@@ -458,6 +458,13 @@
       <div class="chips" id="chips-linhas"></div>
       <label class="f">Pessoas</label>
       <div class="chips" id="chips-pessoas"></div>
+      <label class="f">Rotas no mapa</label>
+      <select id="mapa-rotas-modo" onchange="marcarMapaSujo()">
+        <option value="ambas">Sistema e real (comparar)</option>
+        <option value="sistema">Só a do sistema (oficial)</option>
+        <option value="real">Só a real (mais percorrida)</option>
+      </select>
+      <p class="hint">A <b>rota real</b> é aprendida com o tempo, a partir do caminho que os ônibus de fato fazem — se o motorista desviar do traçado oficial, ela aparece diferente da linha do sistema.</p>
       <div class="row"><button class="bt" onclick="salvarMapa()">Salvar exibição</button><span class="meta" id="mapa-aviso" style="display:none">alterações não salvas</span></div>
     </div>
     <div class="card">
@@ -498,6 +505,8 @@
       <label class="f" id="tr-horarios-lbl">Horários do ônibus</label>
       <input id="tr-horarios" placeholder="06:30, 07:10, 18:20">
       <p class="hint" id="tr-tipo-hint"></p>
+      <label class="f">Hora limite (opcional — não avisar "sair agora" depois desta hora)</label>
+      <input id="tr-limite" placeholder="HH:MM">
       <label class="f">Dias da semana</label>
       <div class="chips" id="tr-dias"></div>
       <div class="row">
@@ -577,6 +586,12 @@
       <input type="number" id="aj-margem" step="1">
       <label class="f">Avisar saída até (min antes)</label>
       <input type="number" id="aj-janela" step="5">
+      <label class="f">Finalizar a viagem ao chegar (m) do destino</label>
+      <input type="number" id="aj-raio-chegada" step="25">
+      <p class="hint">Quando você chega a essa distância do destino, o app avisa <b>“Chegou!”</b> e encerra o rastreio e a rota do trajeto.</p>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="aj-percurso"><span class="tr"></span> Aprender a rota real dos ônibus</label>
+      </div>
       <div class="row">
         <label class="switch"><input type="checkbox" id="aj-sim"><span class="tr"></span> Modo simulação (não envia nada)</label>
       </div>
@@ -893,12 +908,15 @@ function renderTrajetos(){
       const dias = (t.dias||[]).length===7 ? "todos os dias" : (t.dias||[]).map(d=>DIAS[d]).join(" ");
       const linhas = (t.linhas && t.linhas.length) ? t.linhas.join(", ") : "todas do destino";
       const tipoTxt = {ponto:"passa no ponto", liberado:"fica livre", chegar:"chegar no destino"}[t.tipo_horario||"ponto"];
+      const limTxt = t.limite ? " · até "+esc(t.limite) : "";
       // estado ao vivo: mostra quando as condições do trajeto valem agora
       const live = trajetosLive.find(x=>String(x.id)===String(t.id));
       const rr = rastreiosLive.find(x=>String(x.trajeto_id)===String(t.id));
       const b = live && live.bus_id ? ((live.onibus||[])[0]||{}) : null;
       let agora = "";
-      if (rr && rr.a_bordo){
+      if (live && live.chegou){
+        agora = '<span class="pill agora risco-ok"><span class="dt"></span>CHEGOU</span>';
+      } else if (rr && rr.a_bordo){
         agora = '<span class="pill agora"><span class="dt"></span>A BORDO</span>';
       } else if (b){
         const rc = b.risco==="correr" ? "correr" : (b.risco==="perdeu" ? "perdeu" : "");
@@ -915,7 +933,7 @@ function renderTrajetos(){
         ? '<div class="meta">ponto de embarque fixo: '+esc(t.ponto.nome)+'</div>' : "";
       return `<div class="item${cls}"><div>
         <div class="nome">${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
-        <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(tipoTxt)} · ${esc(dias)}</div>
+        <div class="meta">${esc((t.horarios||[]).join(", ")||"sem horário")} · ${esc(tipoTxt)} · ${esc(dias)}${limTxt}</div>
         ${pontoFixo}
       </div><div class="dir">
         ${agora}
@@ -950,6 +968,7 @@ function novoTrajeto(){
   document.getElementById("tr-linha").value = "";
   document.getElementById("tr-destino").value = "";
   document.getElementById("tr-horarios").value = "";
+  document.getElementById("tr-limite").value = "";
   document.getElementById("tr-tipo").value = "ponto";
   document.getElementById("tr-ativo").checked = true;
   selLinhasTrajeto = new Set();
@@ -980,6 +999,7 @@ function editarTrajeto(id){
   document.getElementById("tr-linha").value = "";
   document.getElementById("tr-destino").value = (t.destino && t.destino.nome) || "";
   document.getElementById("tr-horarios").value = (t.horarios||[]).join(", ");
+  document.getElementById("tr-limite").value = t.limite || "";
   document.getElementById("tr-tipo").value = t.tipo_horario || "ponto";
   document.getElementById("tr-ativo").checked = !!t.ativo;
   selLinhasTrajeto = new Set(linhas);
@@ -1019,6 +1039,7 @@ async function salvarTrajeto(){
     tipo_horario: document.getElementById("tr-tipo").value,
     destino, dias, horarios,
     ponto: pontoEscolhidoTrajeto,
+    limite: document.getElementById("tr-limite").value.trim(),
   };
   const r = await api("/api/trajetos", {trajeto});
   if (r.ok){ msg("tr-msg","Trajeto salvo."); novoTrajeto(); await carregarEstado(); carregarMapa(); }
@@ -1335,13 +1356,27 @@ async function carregarMapa(primeiro){
       className:"rotaAnim", interactive:false}).addTo(destaqueLayer);
   });
   const rotas = d.rotas||{};
-  Object.keys(rotas).forEach(sigla=>{
-    rotas[sigla].forEach(pts=>{
-      // interactive:false para não capturar o toque/pan do mapa
-      if (pts.length>1) camadaOutros.addLayer(L.polyline(pts, {color:"#f5a524", weight:2, opacity:.35,
-        dashArray:"1 6", interactive:false }));
+  const modoRotas = (est.mapa && est.mapa.rotas_modo) || "ambas";
+  if (modoRotas !== "real"){
+    Object.keys(rotas).forEach(sigla=>{
+      rotas[sigla].forEach(pts=>{
+        // interactive:false para não capturar o toque/pan do mapa
+        if (pts.length>1) camadaOutros.addLayer(L.polyline(pts, {color:"#f5a524", weight:2, opacity:.35,
+          dashArray:"1 6", interactive:false }));
+      });
     });
-  });
+  }
+  // rota REAL (aprendida com o caminho que os ônibus de fato fazem)
+  if (modoRotas !== "sistema"){
+    const percursos = d.percursos||{};
+    Object.keys(percursos).forEach(sigla=>{
+      (percursos[sigla]||[]).forEach(pc=>{
+        const pts = pc.pontos||[];
+        if (pts.length>1) camadaOutros.addLayer(L.polyline(pts, {color:"#8b5cf6", weight:3, opacity:.8,
+          interactive:false }));
+      });
+    });
+  }
 
   document.getElementById("m-onibus").textContent = (d.onibus||[]).length+" ônibus";
   document.getElementById("m-pessoas").textContent = (d.lugares||[]).length+" pessoas";
@@ -1370,7 +1405,7 @@ async function carregarMapa(primeiro){
       return `<div class="item"><div>
         <div class="nome">${esc(t.pessoa)} · ${esc(linhas)}${t.destino && t.destino.nome ? " → "+esc(t.destino.nome) : ""}</div>
         <div class="meta">${esc(tipoTxt)}${fora}</div>
-        <div class="meta">sem ônibus indo ao destino agora</div>
+        <div class="meta">${t.chegou ? "você chegou ao destino 🏁" : "sem ônibus indo ao destino agora"}</div>
       </div></div>`;
     }
     let status;
@@ -1626,6 +1661,8 @@ function renderMapaChips(){
   }
   chips("chips-linhas", [...todas].sort().map(s=>({id:s, rotulo:s})), selLinhas, marcarMapaSujo);
   chips("chips-pessoas", (est.pessoas||[]).map(p=>({id:p.id, rotulo:p.nome})), selPessoas, marcarMapaSujo);
+  const selRotas = document.getElementById("mapa-rotas-modo");
+  if (selRotas && !mapaSujo) selRotas.value = (est.mapa && est.mapa.rotas_modo) || "ambas";
 }
 let dadosOnibus = [];
 let trajetosLive = [];   // estado ao vivo dos trajetos (de /api/mapa)
@@ -1649,7 +1686,8 @@ async function carregarOnibus(){
 }
 
 async function salvarMapa(){
-  await api("/api/mapa", {onibus:[...selLinhas], pessoas:[...selPessoas], rotas:true, pontos:true});
+  await api("/api/mapa", {onibus:[...selLinhas], pessoas:[...selPessoas], rotas:true, pontos:true,
+    rotas_modo: (document.getElementById("mapa-rotas-modo")||{}).value || "ambas"});
   mapaSujo = false;
   await carregarEstado(); carregarMapa();
 }
@@ -1728,6 +1766,8 @@ function renderAjustes(){
   document.getElementById("aj-fator").value = a.fator_rota;
   document.getElementById("aj-margem").value = a.margem_embarque_min;
   document.getElementById("aj-janela").value = a.janela_saida_min;
+  document.getElementById("aj-raio-chegada").value = a.raio_chegada_destino_m || 200;
+  document.getElementById("aj-percurso").checked = a.aprender_percurso !== false;
   document.getElementById("aj-semlinha").value = a.trajetos_sem_linha || "monitoradas";
   document.getElementById("aj-raio-destino").value = a.raio_destino_m || 3000;
   document.getElementById("aj-dist-max").value = a.dist_max_embarque_m || 2000;
@@ -1747,6 +1787,8 @@ async function salvarAjustes(){
     fator_rota: +document.getElementById("aj-fator").value,
     margem_embarque_min: +document.getElementById("aj-margem").value,
     janela_saida_min: +document.getElementById("aj-janela").value,
+    raio_chegada_destino_m: +document.getElementById("aj-raio-chegada").value || 200,
+    aprender_percurso: document.getElementById("aj-percurso").checked,
     simulacao: document.getElementById("aj-sim").checked,
     diagnostico: document.getElementById("aj-diag").checked
   });

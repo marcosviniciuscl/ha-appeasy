@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.514.0
+
+- **Rota real × rota do sistema**: o app agora **aprende o caminho que os ônibus
+  de fato fazem** (gravando as posições observadas por linha/itinerário) e
+  desenha a **rota real (mais percorrida)** no mapa, reconstruída a partir desse
+  caminho. Em **Ônibus → Rotas no mapa** você escolhe **Sistema**, **Real** ou
+  **Ambas** para comparar. Serve para quando o motorista desvia do traçado
+  oficial: a linha roxa mostra o corredor real, a laranja o do sistema.
+- **Finalizar ao chegar perto do destino**: a viagem (a bordo) passa a ser
+  encerrada pela **sua** posição — quando você chega a `raio_chegada_destino_m`
+  (padrão 200 m) do destino, o app avisa **“Chegou!”** e **para o rastreio e a
+  rota** do trajeto, mesmo que o ônibus tenha desviado do traçado.
+- **Aviso “sair agora” com hora-limite**: cada trajeto pode ter uma **hora
+  limite** (opcional); passada essa hora, o app para de avisar “sair agora”
+  naquele dia. E se você já estiver no destino, o aviso de saída **não é
+  disparado** (e o destaque da rota some).
+- Novos ajustes no painel: **raio de chegada ao destino** e **aprender a rota
+  real** (liga/desliga).
+
 ## 0.513.0
 
 - **O ponto bate com o ônibus que aparece**: entre as paradas próximas, o app
