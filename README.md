@@ -10,6 +10,7 @@ instalação e configuração independentes.
 | --- | --- | --- |
 | **YouTube para Telegram** | [`youtube-telegram/`](youtube-telegram/) | Baixa vídeo/áudio do YouTube pelo Telegram e entrega no chat (usa MinIO para arquivos grandes). |
 | **Bus Tracker** | [`bus_tracker/`](bus_tracker/) | Ônibus ao vivo das cidades que usam o SIUMobile, com painel, avisos e rastreio no celular. |
+| **HA Concierge** | [`ha-concierge/`](ha-concierge/) | Assistente residencial com descoberta de entidades, alertas locais, memória e painel via Ingress. |
 
 A documentação completa de cada App está no `DOCS.md` da respectiva pasta (também
 aparece na aba **Documentação** dentro do Home Assistant).
@@ -51,6 +52,11 @@ do App.
 ├── repository.yaml        # metadados do repositório de Apps
 ├── bus_tracker/           # App de ônibus (SIUMobile)
 │   ├── config.yaml        # opções e metadados do App
+│   ├── Dockerfile
+│   ├── DOCS.md
+│   └── ...
+├── ha-concierge/          # Assistente residencial
+│   ├── config.yaml
 │   ├── Dockerfile
 │   ├── DOCS.md
 │   └── ...

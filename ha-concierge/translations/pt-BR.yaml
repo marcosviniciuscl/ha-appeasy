@@ -1,0 +1,19 @@
+configuration:
+  openai_api_key:
+    name: Chave da OpenAI
+    description: Opcional; usada apenas quando OpenAI é selecionada no painel.
+  anthropic_api_key:
+    name: Chave da Anthropic
+    description: Opcional; usada apenas quando Anthropic é selecionada.
+  gemini_api_key:
+    name: Chave do Google Gemini
+    description: Opcional; usada apenas quando Gemini é selecionado.
+  compatible_api_key:
+    name: Chave da API compatível
+    description: Opcional; para um endpoint HTTPS compatível com OpenAI.
+  compatible_url:
+    name: URL da API compatível
+    description: URL HTTPS pública, terminando normalmente em /v1.
+  ollama_url:
+    name: URL do Ollama
+    description: URL de um servidor Ollama na rede local.
