@@ -58,10 +58,17 @@ Assistant para alertas. Por padrão elas ficam desligadas.
 O modo local sem LLM funciona sem chave. Para modelos externos, preencha a
 chave desejada na aba **Configuração** do App no Home Assistant, depois escolha
 provedor e modelo dentro do painel. Chaves disponíveis: OpenAI, Anthropic,
-Gemini e endpoint compatível com OpenAI. Para Ollama, informe `ollama_url` nas
+Gemini, OpenRouter e endpoint compatível com OpenAI. Para Ollama, informe `ollama_url` nas
 opções do App; o endereço deve resolver para rede privada ou loopback. O
 endpoint compatível deve ser HTTPS público. IDs de modelos variam com o
 provedor; caso o padrão deixe de existir, informe um ID atual.
+
+Para **OpenRouter**, preencha `openrouter_api_key` nas opções do App e selecione
+`openrouter` no painel. O modelo inicial é `openrouter/auto`, mas você pode
+informar um ID específico no formato `provedor/modelo`. Para análise de câmera,
+o modelo escolhido precisa aceitar imagens; confirme a capacidade na página
+do modelo no OpenRouter antes de habilitar o envio. Chamadas podem ser cobradas
+conforme o modelo roteado; o limite do App conta chamadas, não valores em dinheiro.
 
 O painel envia ao modelo apenas estados das entidades selecionadas e alguns
 alertas recentes, além da pergunta. O modelo responde em texto e não tem

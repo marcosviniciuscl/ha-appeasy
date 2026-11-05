@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 DEFAULT_MODELS = {"openai": "gpt-4o-mini", "anthropic": "claude-3-5-haiku-latest",
                   "gemini": "gemini-2.0-flash", "ollama": "llama3.2",
-                  "compatible": "default"}
+                  "compatible": "default", "openrouter": "openrouter/auto"}
 
 
 def options():
@@ -23,7 +23,8 @@ def options():
 
 def key_for(provider):
     field = {"openai": "openai_api_key", "anthropic": "anthropic_api_key",
-             "gemini": "gemini_api_key", "compatible": "compatible_api_key"}.get(provider)
+             "gemini": "gemini_api_key", "compatible": "compatible_api_key",
+             "openrouter": "openrouter_api_key"}.get(provider)
     return options().get(field, "") if field else ""
 
 
@@ -58,12 +59,16 @@ def ask(provider, model, prompt, image=None, mime="image/jpeg"):
     model = model or DEFAULT_MODELS[provider]
     if not model or len(model) > 100:
         raise ValueError("Modelo inválido")
-    if provider in ("openai", "compatible"):
+    if provider in ("openai", "compatible", "openrouter"):
         key = key_for(provider)
         if not key:
             raise RuntimeError("Configure a chave do provedor nas opções do App")
-        endpoint = "https://api.openai.com/v1" if provider == "openai" else allowed_endpoint(
-            options().get("compatible_url", ""))
+        if provider == "openai":
+            endpoint = "https://api.openai.com/v1"
+        elif provider == "openrouter":
+            endpoint = "https://openrouter.ai/api/v1"
+        else:
+            endpoint = allowed_endpoint(options().get("compatible_url", ""))
         content = [{"type": "text", "text": prompt}]
         if image:
             content.append({"type": "image_url", "image_url": {"url":

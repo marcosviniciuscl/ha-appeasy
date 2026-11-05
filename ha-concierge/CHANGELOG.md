@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Adicionado OpenRouter como provedor de chat e análise visual, com chave
+  própria e modelo configurável.
+
 ## 0.1.1
 
 - Exibe o App também em instalações nas quais o estágio experimental é

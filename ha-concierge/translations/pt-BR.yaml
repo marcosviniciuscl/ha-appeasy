@@ -8,6 +8,9 @@ configuration:
   gemini_api_key:
     name: Chave do Google Gemini
     description: Opcional; usada apenas quando Gemini é selecionado.
+  openrouter_api_key:
+    name: Chave da OpenRouter
+    description: Opcional; usada para modelos selecionados pelo OpenRouter.
   compatible_api_key:
     name: Chave da API compatível
     description: Opcional; para um endpoint HTTPS compatível com OpenAI.

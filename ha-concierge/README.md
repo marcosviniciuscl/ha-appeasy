@@ -12,7 +12,7 @@ funciona por Ingress; dados e memória ficam em `/data`.
 - Alertas locais de abertura durante ausência, sensores de segurança e
   consumo acima de uma mediana recente; linha do tempo e feedback.
 - Conversa local sobre áreas, presença e alertas. Adaptadores opcionais para
-  OpenAI, Anthropic, Gemini, Ollama e API compatível com OpenAI.
+  OpenAI, Anthropic, Gemini, OpenRouter, Ollama e API compatível com OpenAI.
 - Análise de câmera por pedido explícito; análise após alerta de segurança na
   mesma área somente com autorização adicional. Intervalo mínimo de cinco minutos.
 - Preferências locais e propostas de rotina diária para luzes e interruptores.
