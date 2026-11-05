@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Carrega o catálogo de modelos do provedor selecionado e permite filtrar por
+  nome ou identificador na configuração.
+
 ## 0.1.2
 
 - Adicionado OpenRouter como provedor de chat e análise visual, com chave

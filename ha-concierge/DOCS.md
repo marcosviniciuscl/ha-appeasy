@@ -70,6 +70,15 @@ o modelo escolhido precisa aceitar imagens; confirme a capacidade na página
 do modelo no OpenRouter antes de habilitar o envio. Chamadas podem ser cobradas
 conforme o modelo roteado; o limite do App conta chamadas, não valores em dinheiro.
 
+Ao selecionar um provedor, o painel consulta seu catálogo e mostra os modelos
+em uma lista filtrável. OpenRouter, OpenAI, Anthropic, Gemini e endpoints
+compatíveis usam seus endpoints de catálogo. Ollama lista os modelos presentes
+no servidor informado; para Ollama Cloud, essa lista depende do servidor/API
+configurado e pode exigir que os modelos tenham sido habilitados ou baixados.
+Se não houver chave, a API estiver indisponível ou o endpoint não oferecer
+listagem, o painel informa isso, mantém o modelo padrão e permite digitar um
+ID manualmente.
+
 O painel envia ao modelo apenas estados das entidades selecionadas e alguns
 alertas recentes, além da pergunta. O modelo responde em texto e não tem
 ferramentas para controlar a casa. O limite diário de chamadas é ajustável;

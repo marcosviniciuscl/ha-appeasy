@@ -37,6 +37,61 @@ def _post(url, headers, body):
         raise RuntimeError("O provedor de IA não respondeu") from exc
 
 
+def available_models(provider):
+    """Return chat models exposed by the selected provider, with a safe fallback."""
+    cfg = options()
+    try:
+        if provider in ("openai", "openrouter", "compatible"):
+            if provider == "openai":
+                endpoint, key = "https://api.openai.com/v1", key_for(provider)
+            elif provider == "openrouter":
+                endpoint, key = "https://openrouter.ai/api/v1", key_for(provider)
+            else:
+                endpoint, key = allowed_endpoint(cfg.get("compatible_url", "")), key_for(provider)
+            headers = {"Authorization": "Bearer " + key} if key else {}
+            response = requests.get(endpoint + "/models", headers=headers, timeout=20)
+            response.raise_for_status()
+            data = response.json().get("data", [])
+            items = [{"id": m["id"], "name": m.get("name") or m["id"]}
+                     for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)]
+        elif provider == "anthropic":
+            key = key_for(provider)
+            if not key:
+                raise RuntimeError("Configure a chave Anthropic nas opções do App")
+            response = requests.get("https://api.anthropic.com/v1/models",
+                                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"}, timeout=20)
+            response.raise_for_status()
+            data = response.json().get("data", [])
+            items = [{"id": m["id"], "name": m.get("display_name") or m["id"]}
+                     for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)]
+        elif provider == "gemini":
+            key = key_for(provider)
+            if not key:
+                raise RuntimeError("Configure a chave Gemini nas opções do App")
+            response = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                                    params={"key": key, "pageSize": 1000}, timeout=20)
+            response.raise_for_status()
+            data = response.json().get("models", [])
+            items = [{"id": m["name"].removeprefix("models/"), "name": m.get("displayName") or m["name"]}
+                     for m in data if isinstance(m, dict) and "generateContent" in m.get("supportedGenerationMethods", [])]
+        elif provider == "ollama":
+            endpoint = allowed_endpoint(cfg.get("ollama_url", os.getenv("OLLAMA_URL", "http://localhost:11434")), local=True)
+            response = requests.get(endpoint + "/api/tags", timeout=20)
+            response.raise_for_status()
+            data = response.json().get("models", [])
+            items = [{"id": m["name"], "name": m.get("details", {}).get("family", m["name"])}
+                     for m in data if isinstance(m, dict) and isinstance(m.get("name"), str)]
+        elif provider == "local":
+            items = []
+        else:
+            raise ValueError("Provedor desconhecido")
+        deduped = {m["id"]: m for m in items if m["id"]}
+        return {"models": sorted(deduped.values(), key=lambda m: m["id"].lower()), "source": "provider"}
+    except (requests.RequestException, ValueError, KeyError, RuntimeError) as exc:
+        return {"models": [{"id": model, "name": model} for model in [DEFAULT_MODELS[provider]]],
+                "source": "fallback", "message": str(exc) if isinstance(exc, RuntimeError) else "Catálogo indisponível; usando modelo padrão."}
+
+
 def allowed_endpoint(url, local=False):
     parsed = urlparse(url)
     if parsed.scheme not in (("http", "https") if local else ("https",)) or not parsed.hostname:

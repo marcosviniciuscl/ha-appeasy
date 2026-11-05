@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from engine import Engine, snapshot
 from ha_client import HAClient, HAError
-from llm import ask, DEFAULT_MODELS
+from llm import ask, DEFAULT_MODELS, available_models
 from store import Store
 
 
@@ -211,6 +211,12 @@ class Handler(BaseHTTPRequestHandler):
                     "ai_used_today": store.get("ai_usage:" + dt.date.today().isoformat(), 0),
                     "notifications_enabled": store.get("notifications_enabled", False),
                     "connection_error": engine.error})
+            if path.endswith("/api/models"):
+                from urllib.parse import parse_qs
+                provider = parse_qs(urlsplit(self.path).query).get("provider", [""])[0]
+                if provider not in ("local", *DEFAULT_MODELS):
+                    return self._json(400, {"error": "Provedor desconhecido"})
+                return self._json(200, available_models(provider))
             if path.endswith("/api/inventory"):
                 return self._json(200, inventory())
             if path.endswith("/api/events"):
