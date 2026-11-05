@@ -17,7 +17,18 @@ from store import Store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 ROOT = Path(__file__).parent
+WEB = (ROOT / "web").resolve()
 DATA = Path(os.getenv("CONCIERGE_DATA", "/data"))
+MIME_TYPES = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
+              ".mjs": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+              ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml",
+              ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+              ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2",
+              ".ttf": "font/ttf", ".eot": "application/vnd.ms-fontobject"}
+CONTENT_SECURITY_POLICY = ("default-src 'self'; img-src 'self' data:; "
+                           "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+                           "connect-src 'self'; font-src 'self'; base-uri 'none'; "
+                           "form-action 'self'")
 store = Store(str(DATA / "concierge.db"))
 ha = HAClient()
 engine = Engine(ha, store)
@@ -169,11 +180,16 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _file(self, name, mime):
-        body = (ROOT / "web" / name).read_bytes()
+    def _file(self, name, mime=None, cache="no-store"):
+        target = (WEB / name).resolve()
+        if WEB not in target.parents or not target.is_file():
+            return self._json(404, {"error": "Arquivo não encontrado"})
+        body = target.read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", mime)
-        self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'")
+        self.send_header("Content-Type", mime or MIME_TYPES.get(target.suffix.lower(),
+                                                                "application/octet-stream"))
+        self.send_header("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+        self.send_header("Cache-Control", cache)
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -193,10 +209,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "Acesso via Ingress necessário"})
         path = urlsplit(self.path).path
         try:
-            if path.endswith("/static/app.js"):
-                return self._file("app.js", "application/javascript; charset=utf-8")
-            if path.endswith("/static/style.css"):
-                return self._file("style.css", "text/css; charset=utf-8")
             if path.endswith("/api/bootstrap"):
                 return self._json(200, {"profile": store.get("profile"), "selected": store.get("selected"),
                     "presence_entities": store.get("presence_entities", []),
@@ -230,6 +242,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, store.proposals())
             if path.endswith("/api/health"):
                 return self._json(200, {"status": "ok", "ha_error": engine.error})
+            if "/assets/" in path:
+                relative = "assets/" + path.rsplit("/assets/", 1)[1]
+                return self._file(relative, cache="public, max-age=31536000, immutable")
+            if path.endswith(tuple(MIME_TYPES)):
+                return self._json(404, {"error": "Arquivo não encontrado"})
             return self._file("index.html", "text/html; charset=utf-8")
         except HAError as exc:
             self._json(503, {"error": str(exc)})

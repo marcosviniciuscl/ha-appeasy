@@ -17,3 +17,8 @@
 7. Ao concluir, informe arquivos criados, decisões de arquitetura, comandos
    de teste e resultados. Se algum teste exigir uma instância real do Home
    Assistant, descreva exatamente o que falta validar.
+8. O painel em `ui/` usa Vue 3 com PrimeVue v4. O build é executado no estágio
+   Node do Dockerfile durante a instalação/atualização do App; a saída em
+   `web/` é servida pelo backend. Para testar o painel localmente, rode
+   `cd ui && npm ci && npm run build` (a pasta `web/` não é versionada). Não
+   versione `ui/node_modules/` nem `web/`.

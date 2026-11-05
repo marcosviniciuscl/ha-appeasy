@@ -104,7 +104,32 @@ exportar respostas e apagar todos os registros de memória. Para excluir também
 eventos e configurações, pare o App e remova seu diretório `/data` pelo
 mecanismo de gerenciamento do Supervisor.
 
+## Interface
+
+O painel é uma aplicação Vue 3 construída com PrimeVue v4. O resultado do
+build é gerado em `web/` e servido pelo próprio backend, sem CDN externo. A
+interface inclui tema claro/escuro, navegação lateral em desktop e menu
+retrátil em telas pequenas. Os dados continuam vindo apenas de `/api/*` sob o
+prefixo do Ingress.
+
 ## Desenvolvimento
+
+O painel tem código-fonte em `ui/`. O build é feito durante a construção da
+imagem: o Dockerfile compila `ui/` em um estágio Node e copia o resultado para
+a imagem final. Assim, a instalação e a atualização do App no Home Assistant
+sempre usam o código-fonte atual, e o dispositivo executa apenas Python.
+`ha-concierge/web/` é gerado no build e não é versionado.
+
+Para testar o painel fora do Docker, gere-o manualmente:
+
+```bash
+cd ha-concierge/ui
+npm ci
+npm run build
+```
+
+Esse comando cria `ha-concierge/web/` apenas na sua máquina; não é necessário
+rodá-lo antes de commits ou para instalar o App.
 
 Execute `pytest -q ha-concierge/tests` na raiz do repositório. Para iniciar
 fora do Home Assistant, defina `CONCIERGE_DATA`, `CONCIERGE_DEV=1`, `HA_BASE`,

@@ -3,3 +3,4 @@ __pycache__/
 *.log
 cookies.txt
 options.json
+ha-concierge/web/

@@ -17,6 +17,8 @@ funciona por Ingress; dados e memória ficam em `/data`.
   mesma área somente com autorização adicional. Intervalo mínimo de cinco minutos.
 - Preferências locais e propostas de rotina diária para luzes e interruptores.
   A execução é gerenciada pelo App depois da aprovação.
+- Painel em Vue 3 com PrimeVue v4, tema claro/escuro, navegação responsiva,
+  busca e tabelas para entidades, catálogo de modelos e linha do tempo.
 
 ## Instalação e uso
 
@@ -26,7 +28,7 @@ desenvolvimento e **não contêm dados de moradores**.
 
 ## Limites atuais
 
-A versão 0.1.0 usa amostragem REST a cada 15 segundos. Rotinas aprovadas são
+A versão atual usa amostragem REST a cada 15 segundos. Rotinas aprovadas são
 executadas pelo próprio App e não aparecem como entidades de automação nativas
 do Home Assistant. A análise de câmeras por evento exige opt-in. O limite de IA é por número
 de chamadas, não por custo monetário. Consulte `DOCS.md` antes de usar alertas

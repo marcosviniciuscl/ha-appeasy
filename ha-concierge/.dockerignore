@@ -3,3 +3,6 @@ __pycache__/
 *.db
 tests/
 .pytest_cache/
+web/
+ui/node_modules/
+ui/dist/
