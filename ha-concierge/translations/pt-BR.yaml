@@ -1,4 +1,7 @@
 configuration:
+  debug:
+    name: Modo de depuração
+    description: Registra detalhes técnicos de provedores e do chat nos logs. Chaves não são registradas.
   openai_api_key:
     name: Chave da OpenAI
     description: Opcional; usada apenas quando OpenAI é selecionada no painel.

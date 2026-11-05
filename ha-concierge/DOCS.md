@@ -86,6 +86,16 @@ uma tentativa conta para o limite mesmo que o provedor falhe. Chaves não são
 expostas à interface nem aos logs do App. Os segredos nas opções do Supervisor
 seguem a proteção de armazenamento do próprio Home Assistant.
 
+## Depuração
+
+Para investigar respostas vazias, falhas de conexão ou catálogos de modelos
+indisponíveis, ative `debug: true` nas opções do App e reinicie-o. Os logs do
+App passam a registrar provedor, modelo, tamanho da pergunta e da resposta,
+status HTTP e mensagens de erro retornadas pelo provedor. Chaves de API,
+cabeçalhos de autenticação, imagens e o conteúdo completo do contexto não são
+gravados. Desative `debug` depois de coletar os logs. Em desenvolvimento local,
+use `CONCIERGE_DEBUG=1 python3 ha-concierge/app.py`.
+
 ## Câmeras e privacidade
 
 Selecione uma câmera em Monitoramento, habilite-a em Configurações e autorize

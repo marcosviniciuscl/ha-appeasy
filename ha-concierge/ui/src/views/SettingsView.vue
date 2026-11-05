@@ -2,11 +2,8 @@
 import { computed, reactive, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
-import Listbox from 'primevue/listbox'
 import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import ProgressBar from 'primevue/progressbar'
@@ -46,7 +43,6 @@ const presenceEntities = ref([...(state.boot.presence_entities || [])])
 
 const provider = ref(state.boot.provider)
 const model = ref(state.boot.model || '')
-const modelSearch = ref('')
 const dailyLimit = ref(state.boot.daily_ai_limit ?? 50)
 
 const allowedCameras = ref([...(state.boot.camera_allowed || [])])
@@ -136,14 +132,6 @@ const cameraOptions = computed(() =>
   ),
 )
 
-const modelMatches = computed(() => {
-  const term = modelSearch.value.trim().toLowerCase()
-  if (!term) return state.availableModels
-  return state.availableModels.filter((entry) =>
-    `${entry.id} ${entry.name}`.toLowerCase().includes(term),
-  )
-})
-
 const modelMetaSeverity = computed(() => {
   const source = state.modelMeta?.source
   if (source === 'error' || source === 'fallback') return 'warn'
@@ -158,7 +146,7 @@ const modelStatus = computed(() => {
     return meta.message || 'Catálogo indisponível; você ainda pode digitar um ID.'
   }
   const suffix = provider.value === 'ollama' ? ' instalados/disponíveis no servidor' : ''
-  return `${modelMatches.value.length} de ${state.availableModels.length} modelos${suffix}.`
+  return `${state.availableModels.length} modelos disponíveis${suffix}.`
 })
 
 const usagePercent = computed(() => {
@@ -377,29 +365,21 @@ function analyze(entity) {
             </div>
 
             <div class="field span-2">
-              <label for="modelSearch">Buscar modelo</label>
-              <IconField>
-                <InputIcon class="pi pi-search" />
-                <InputText
-                  id="modelSearch"
-                  v-model="modelSearch"
-                  autocomplete="off"
-                  placeholder="Digite para filtrar por nome ou ID"
-                />
-              </IconField>
-            </div>
-
-            <div class="field span-2">
-              <label>Modelos disponíveis</label>
-              <Listbox
+              <label for="modelSelect">Modelo</label>
+              <Select
+                id="modelSelect"
                 v-model="model"
-                :options="modelMatches"
+                :options="state.availableModels"
                 optionLabel="name"
                 optionValue="id"
-                :filter="false"
-                class="model-list"
-                listStyle="max-height: 250px"
+                filter
+                :filterFields="['name', 'id']"
+                filterPlaceholder="Buscar por nome ou ID"
+                placeholder="Escolha um modelo ou use o padrão"
+                overlayClass="model-select-overlay"
+                showClear
                 emptyMessage="Nenhum modelo encontrado"
+                class="model-select"
               >
                 <template #option="{ option }">
                   <div class="model-option">
@@ -407,7 +387,10 @@ function analyze(entity) {
                     <small>{{ option.id }}</small>
                   </div>
                 </template>
-              </Listbox>
+              </Select>
+              <small class="fine">
+                O catálogo é carregado do provedor selecionado. Deixe vazio para usar o padrão.
+              </small>
             </div>
 
             <div class="field span-2">

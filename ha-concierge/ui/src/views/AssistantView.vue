@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -12,20 +12,34 @@ import { providerNames } from '../utils'
 
 const message = ref('')
 const end = ref(null)
+const panel = ref(null)
 
 const provider = computed(() => {
   const value = state.boot?.provider || 'local'
   return value === 'local' ? 'Modo local, sem LLM externa' : providerNames[value] || value
 })
 
+async function scrollToEnd() {
+  await nextTick()
+  const instance = panel.value
+  if (instance && typeof instance.scrollTop === 'function') {
+    instance.scrollTop(Number.MAX_SAFE_INTEGER)
+  } else {
+    end.value?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }
+}
+
 async function submit() {
   const text = message.value.trim()
   if (!text || state.chatBusy) return
   message.value = ''
-  await sendChat(text)
-  await nextTick()
-  end.value?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  const pending = sendChat(text)
+  await scrollToEnd()
+  await pending
+  await scrollToEnd()
 }
+
+onMounted(scrollToEnd)
 </script>
 
 <template>
@@ -43,7 +57,7 @@ async function submit() {
 
   <Card>
     <template #content>
-      <ScrollPanel class="chat-scroll" :style="{ height: '420px' }">
+      <ScrollPanel ref="panel" class="chat-scroll" :style="{ height: '420px' }">
         <div class="chat-log">
           <div v-if="!state.chat.length" class="empty-state">
             <i class="pi pi-comments" />

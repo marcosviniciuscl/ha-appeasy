@@ -217,7 +217,16 @@ export async function sendChat(message) {
   state.chatBusy = true
   try {
     const result = await api('chat', { message })
-    state.chat.push({ mine: false, text: result.answer })
+    const answer = typeof result.answer === 'string' ? result.answer.trim() : ''
+    state.chat.push(
+      answer
+        ? { mine: false, text: answer }
+        : {
+            mine: false,
+            text: 'O provedor retornou uma resposta vazia. Ative o modo debug nos logs do App e verifique o modelo configurado.',
+            error: true,
+          },
+    )
   } catch (error) {
     state.chat.push({ mine: false, text: error.message, error: true })
   } finally {

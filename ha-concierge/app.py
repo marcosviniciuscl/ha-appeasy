@@ -11,11 +11,15 @@ from urllib.parse import urlsplit
 
 from engine import Engine, snapshot
 from ha_client import HAClient, HAError
-from llm import ask, DEFAULT_MODELS, available_models
+from llm import ask, DEFAULT_MODELS, available_models, options as llm_options
 from store import Store
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+DEBUG_ENABLED = os.getenv("CONCIERGE_DEBUG") == "1" or llm_options().get("debug") is True
+logging.basicConfig(level=logging.DEBUG if DEBUG_ENABLED else logging.INFO,
+                    format="%(asctime)s %(levelname)s %(message)s")
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
 ROOT = Path(__file__).parent
 WEB = (ROOT / "web").resolve()
 DATA = Path(os.getenv("CONCIERGE_DATA", "/data"))
@@ -58,9 +62,11 @@ def analyze_camera(eid, reason):
         store.set(key, time.time())
     image, mime = ha.camera_snapshot(eid)
     charge_ai()
+    logging.debug("Análise de câmera iniciada entity_id=%s image_bytes=%d", eid, len(image))
     answer = ask(provider, store.get("model", ""),
                  "Descreva apenas fatos visíveis relevantes à segurança doméstica, sem identificar pessoas. "
                  "Motivo da análise: " + reason, image, mime)
+    logging.debug("Análise de câmera concluída entity_id=%s answer_chars=%d", eid, len(answer or ""))
     store.event("camera", "Análise visual: " + reason, answer[:500], eid)
     return answer
 
@@ -369,6 +375,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not question:
                     raise ValueError("Mensagem vazia")
                 provider = store.get("provider", "local")
+                logging.debug("Chat iniciado provider=%s model=%s question_chars=%d selected=%d",
+                              provider, store.get("model", "") or "<padrão>", len(question),
+                              len(store.get("selected", [])))
                 if provider == "local":
                     answer = local_answer(question)
                 else:
@@ -384,6 +393,11 @@ class Handler(BaseHTTPRequestHandler):
                               + json.dumps(context, ensure_ascii=False) + "\nPergunta: " + question)
                     charge_ai()
                     answer = ask(provider, store.get("model", ""), prompt)
+                if not isinstance(answer, str) or not answer.strip():
+                    logging.debug("Chat vazio provider=%s answer_type=%s", provider, type(answer).__name__)
+                    raise RuntimeError("O provedor retornou uma resposta vazia")
+                answer = answer.strip()
+                logging.debug("Chat concluído provider=%s answer_chars=%d", provider, len(answer))
                 return self._json(200, {"answer": answer})
             if path.endswith("/api/camera/analyze"):
                 eid = str(body.get("entity_id", ""))
@@ -391,8 +405,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"answer": answer})
             return self._json(404, {"error": "Rota não encontrada"})
         except (ValueError, KeyError) as exc:
+            logging.debug("POST %s rejeitado: %s", path, exc)
             self._json(400, {"error": str(exc)})
         except (HAError, RuntimeError) as exc:
+            logging.debug("POST %s indisponível: %s", path, exc)
             self._json(503, {"error": str(exc)})
         except Exception:
             logging.exception("POST failed")
@@ -400,6 +416,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    logging.info("HA Concierge iniciado (debug=%s)", DEBUG_ENABLED)
     threading.Thread(target=engine.run, daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", 8099), Handler)
     logging.info("HA Concierge listening on 8099")

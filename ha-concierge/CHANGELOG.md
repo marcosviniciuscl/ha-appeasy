@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+- Corrige o espaçamento do menu lateral e o fundo do breadcrumb.
+- Troca a lista de modelos pelo Select pesquisável do PrimeVue, com opções
+  legíveis por nome e identificador.
+- Corrige o scroll automático da conversa no Assistente.
+- Detecta respostas vazias dos provedores e exibe um erro claro em vez de
+  bolha vazia.
+- Adiciona o modo `debug` nas opções do App, com logs de provedor, modelo,
+  tempos, status HTTP e erros, sem registrar chaves.
+
 ## 0.2.0
 
 - Interface reconstruída em Vue 3 com PrimeVue v4, com tema claro/escuro,

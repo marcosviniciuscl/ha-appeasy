@@ -1,5 +1,5 @@
 name: HA Concierge
-version: "0.2.0"
+version: "0.2.1"
 slug: ha_concierge
 description: Assistente residencial com monitoramento selecionável e memória local.
 url: https://github.com/marcosviniciuscl/ha-appeasy/tree/main/ha-concierge
@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 8099
 panel_icon: mdi:home-heart
 options:
+  debug: false
   openai_api_key: ""
   anthropic_api_key: ""
   gemini_api_key: ""
@@ -20,6 +21,7 @@ options:
   compatible_url: ""
   ollama_url: "http://localhost:11434"
 schema:
+  debug: bool
   openai_api_key: password
   anthropic_api_key: password
   gemini_api_key: password
