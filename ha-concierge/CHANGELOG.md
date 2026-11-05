@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Exibe o App também em instalações nas quais o estágio experimental é
+  filtrado pela loja.
+
 ## 0.1.0
 
 - App instalável via Ingress e painel responsivo.

@@ -1,5 +1,5 @@
 name: HA Concierge
-version: "0.1.0"
+version: "0.1.1"
 slug: ha_concierge
 description: Assistente residencial com monitoramento selecionável e memória local.
 url: https://github.com/marcosviniciuscl/ha-appeasy/tree/main/ha-concierge
@@ -7,7 +7,6 @@ arch:
   - amd64
   - aarch64
 init: false
-stage: experimental
 homeassistant_api: true
 ingress: true
 ingress_port: 8099

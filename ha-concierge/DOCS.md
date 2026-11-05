@@ -7,6 +7,13 @@ OS ou Supervised. Abra a interface pelo botão **Abrir interface web**. O App
 usa Ingress; não publica porta externa por padrão. A API do Home Assistant é
 acessada pelo token fornecido pelo Supervisor.
 
+Se o App não aparecer após uma atualização do repositório, abra **Configurações
+→ Apps → Loja de Apps**, use o menu **⋮ → Verificar atualizações** (ou
+recarregue a loja) e atualize a página do navegador. Confirme que o repositório
+`https://github.com/marcosviniciuscl/ha-appeasy` está cadastrado. Se continuar
+ausente, consulte os logs do Supervisor para ver se o `config.yaml` foi
+rejeitado; envie a mensagem de erro para diagnóstico.
+
 ## Primeira execução
 
 Escolha o nome do assistente, ou mantenha **Concierge**. O nome do morador é
