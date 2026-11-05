@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Adiciona sugestões determinísticas baseadas nas entidades descobertas, com
+  prioridade, motivo e ação para monitoramento, presença, segurança, consumo,
+  câmeras, rotinas, baterias e entidades indisponíveis.
+- Exibe as sugestões no painel e permite abrir diretamente a tela ou aba
+  relacionada.
+- Inclui as sugestões nas respostas locais do Assistente e no contexto enviado
+  ao provedor de linguagem.
+
 ## 0.2.1
 
 - Corrige o espaçamento do menu lateral e o fundo do breadcrumb.

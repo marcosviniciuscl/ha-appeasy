@@ -21,6 +21,9 @@ export const state = reactive({
   availableModels: [],
   modelMeta: null,
   modelsLoading: false,
+  suggestions: [],
+  suggestionsLoading: false,
+  settingsTab: 'identity',
   page: 'overview',
   chat: [],
   chatBusy: false,
@@ -28,8 +31,9 @@ export const state = reactive({
   fatal: '',
 })
 
-export function go(page) {
+export function go(page, tab) {
   state.page = page
+  if (page === 'settings' && tab) state.settingsTab = tab
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -56,6 +60,7 @@ export async function load() {
       api('proposals'),
     ])
     Object.assign(state, { boot, inv, events, memories, proposals })
+    await refreshSuggestions()
   } catch (error) {
     state.fatal = error.message
   } finally {
@@ -71,6 +76,18 @@ export async function reloadBoot() {
 export async function refresh(kind) {
   state[kind] = await api(kind)
   return state[kind]
+}
+
+export async function refreshSuggestions() {
+  state.suggestionsLoading = true
+  try {
+    const result = await api('suggestions')
+    state.suggestions = result.suggestions || []
+  } catch {
+    state.suggestions = []
+  } finally {
+    state.suggestionsLoading = false
+  }
 }
 
 export async function saveProfile(payload, message = 'Nome salvo.') {
@@ -91,6 +108,7 @@ export async function saveSelection(selected) {
   return perform(async () => {
     await api('select', { selected })
     await reloadBoot()
+    await refreshSuggestions()
   }, 'Seleção salva.', `${selected.length} entidades monitoradas.`)
 }
 
@@ -98,6 +116,7 @@ export async function savePresence(payload) {
   return perform(async () => {
     await api('presence', payload)
     await reloadBoot()
+    await refreshSuggestions()
   }, 'Presença configurada.')
 }
 
@@ -109,6 +128,7 @@ export async function answerQuestion(action, value) {
       value,
     })
     await reloadBoot()
+    await refreshSuggestions()
   }, 'Resposta registrada.')
 }
 
@@ -142,6 +162,7 @@ export async function saveNotifications(enabled) {
   return perform(async () => {
     await api('notifications', { enabled })
     await reloadBoot()
+    await refreshSuggestions()
   }, 'Avisos configurados.')
 }
 
@@ -149,6 +170,7 @@ export async function saveCameras(payload) {
   return perform(async () => {
     await api('cameras', payload)
     await reloadBoot()
+    await refreshSuggestions()
   }, 'Permissões de câmera salvas.')
 }
 
@@ -209,6 +231,7 @@ export async function decideProposal(proposal, status) {
   return perform(async () => {
     await api('proposal', { id: Number(proposal.id), status })
     await refresh('proposals')
+    await refreshSuggestions()
   }, 'Decisão registrada.')
 }
 

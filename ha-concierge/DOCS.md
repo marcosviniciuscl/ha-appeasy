@@ -53,6 +53,17 @@ não são silenciados por esse mecanismo.
 Em Configurações, você pode habilitar notificações persistentes do Home
 Assistant para alertas. Por padrão elas ficam desligadas.
 
+## Sugestões
+
+O painel analisa os tipos, estados e classes das entidades descobertas e
+mostra sugestões do que pode ser feito: selecionar sensores de segurança,
+configurar presença, acompanhar medidores, revisar câmeras com consentimento,
+observar rotinas de luzes, verificar baterias baixas e revisar entidades
+indisponíveis. As sugestões usam apenas dados locais do inventário, não enviam
+nada a provedores e se atualizam após mudanças de seleção, presença, câmeras,
+avisos ou propostas. O Assistente também responde a perguntas como
+“quais sugestões você tem?” usando essa mesma lista.
+
 ## Modelos de linguagem
 
 O modo local sem LLM funciona sem chave. Para modelos externos, preencha a

@@ -29,7 +29,11 @@ import {
 import { providerNames } from '../utils'
 
 const confirm = useConfirm()
-const tab = ref('identity')
+const tab = ref(state.settingsTab || 'identity')
+
+watch(tab, (value) => {
+  state.settingsTab = value
+})
 
 const profile = reactive({ assistant_name: '', resident_name: '' })
 const identitySaving = ref(false)

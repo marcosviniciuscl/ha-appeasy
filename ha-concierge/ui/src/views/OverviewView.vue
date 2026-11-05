@@ -10,7 +10,7 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import EventList from '../components/EventList.vue'
-import { answerQuestion, go, state } from '../store'
+import { answerQuestion, go, refreshSuggestions, state } from '../store'
 import { formatDate } from '../utils'
 
 const questionChoice = ref(null)
@@ -59,6 +59,45 @@ const presenceSeverity = computed(() => {
   if (mode === 'away') return 'warn'
   return 'secondary'
 })
+
+const suggestions = computed(() => state.suggestions || [])
+
+const suggestionIcons = {
+  security: 'pi pi-shield',
+  presence: 'pi pi-users',
+  energy: 'pi pi-bolt',
+  automation: 'pi pi-sun',
+  camera: 'pi pi-camera',
+  maintenance: 'pi pi-wrench',
+  monitor: 'pi pi-list-check',
+  system: 'pi pi-info-circle',
+}
+
+const suggestionLabels = { high: 'Prioridade alta', medium: 'Sugestão', low: 'Oportunidade' }
+
+function suggestionIcon(item) {
+  return suggestionIcons[item.kind] || 'pi pi-lightbulb'
+}
+
+function suggestionSeverity(item) {
+  if (item.priority === 'high') return 'warn'
+  if (item.priority === 'medium') return 'info'
+  return 'secondary'
+}
+
+function runSuggestion(item) {
+  const targets = {
+    'settings-presence': ['settings', 'presence'],
+    'settings-cameras': ['settings', 'cameras'],
+    'settings-notifications': ['settings', 'notifications'],
+    'settings-model': ['settings', 'model'],
+    automations: ['automations'],
+    activity: ['activity'],
+    monitor: ['monitor'],
+  }
+  const [page, tab] = targets[item.action] || ['monitor']
+  go(page, tab)
+}
 
 async function answer(action) {
   answering.value = true
@@ -139,6 +178,47 @@ async function answer(action) {
       </template>
     </Card>
   </div>
+
+  <Card class="suggestions-card">
+    <template #title>
+      <div class="card-title-row">
+        <span><i class="pi pi-lightbulb" /> Sugestões para a sua casa</span>
+        <Button
+          icon="pi pi-refresh"
+          text
+          rounded
+          size="small"
+          :loading="state.suggestionsLoading"
+          aria-label="Atualizar sugestões"
+          v-tooltip.bottom="'Atualizar sugestões'"
+          @click="refreshSuggestions"
+        />
+      </div>
+    </template>
+    <template #content>
+      <div v-if="state.suggestionsLoading && !suggestions.length" class="empty-state">
+        <i class="pi pi-spin pi-spinner" /> Analisando as entidades…
+      </div>
+      <div v-else-if="suggestions.length" class="suggestion-list">
+        <div v-for="item in suggestions" :key="item.id" class="suggestion-row">
+          <span class="suggestion-icon"><i :class="suggestionIcon(item)" /></span>
+          <div class="suggestion-main">
+            <div class="suggestion-title">
+              <strong>{{ item.title }}</strong>
+              <Tag :severity="suggestionSeverity(item)" :value="suggestionLabels[item.priority]" />
+            </div>
+            <p>{{ item.detail }}</p>
+            <small>{{ item.reason }}</small>
+          </div>
+          <Button :label="item.action_label" size="small" outlined @click="runSuggestion(item)" />
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <i class="pi pi-check-circle" />
+        Nada pendente. As propostas de rotina aparecem após alguns dias de observação.
+      </div>
+    </template>
+  </Card>
 
   <div class="grid two-col">
     <Card>

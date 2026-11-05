@@ -1,5 +1,5 @@
 name: HA Concierge
-version: "0.2.1"
+version: "0.3.0"
 slug: ha_concierge
 description: Assistente residencial com monitoramento selecionável e memória local.
 url: https://github.com/marcosviniciuscl/ha-appeasy/tree/main/ha-concierge

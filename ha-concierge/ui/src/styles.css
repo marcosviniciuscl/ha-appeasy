@@ -330,6 +330,62 @@ a {
   margin-top: 0.8rem;
 }
 
+.suggestions-card {
+  margin-top: 1rem;
+}
+
+.suggestion-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.suggestion-row {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--app-border);
+}
+
+.suggestion-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.suggestion-icon {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.7rem;
+  background: rgba(47, 127, 81, 0.1);
+  color: var(--p-primary-color);
+}
+
+.suggestion-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.suggestion-title strong {
+  font-size: 0.88rem;
+}
+
+.suggestion-main p {
+  margin: 0.2rem 0;
+  color: var(--app-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.suggestion-main small {
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
 .p-card {
   border-radius: var(--app-radius);
   box-shadow: none;
@@ -917,5 +973,14 @@ a {
   .event-actions {
     justify-content: flex-start;
     margin-top: 0.4rem;
+  }
+
+  .suggestion-row {
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+  }
+
+  .suggestion-row > .p-button {
+    grid-column: 2;
+    justify-self: start;
   }
 }
